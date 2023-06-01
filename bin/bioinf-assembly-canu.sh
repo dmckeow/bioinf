@@ -16,7 +16,8 @@ awk '/^###### STEP-/ {print "\t\t"$0}' $(which bioinf-assembly-canu.sh)
 echo -e "\n-G, --genomesize [default = 10000]\texpected genome size in bp - use the smallest genome size expected (going too small is fine, but a genome size that is too big may cause assembly failure)\n"
 echo -e "-R, --minread [default = 1000]\tminimum read length to use in bp - use a read length that is short enough so that CANU doesn't exclude too much of your data\n"
 echo -e "-V, --minoverlap [default = 500]\tminimum read overlaps to allow in bp - CANU's default is 500 bp overlap with a minimum read length of 1000 bp - you might need to try proportionately shorter overlaps than this, especially if your reads are shorter than 1000 bp. For 300-500 bp long reads, I have found that an overlap of 20-50 succeeds at generating good contigs, but going higher results in few or no contigs\n"
-echo -e "-r, --resume\trestart a previous run from where it last ended. Useful for resuming interrupted jobs without losing progress\n"
+echo -e "-r, --resume [default = false]\trestart a previous run from where it last ended. Useful for resuming interrupted jobs without losing progress\n"
+echo -e "-I, --isoncorrect [default = false]\tPerform additional correction of reads using isONcorrect. For cDNA data\n"
 echo -e "!!! Checking your ASSEMBLY run !!!\n check your slurm.out and slurm.err logs and the canu.out file in your final output folder. OR check what files you have in your temporary and final output folders - a successful run will have corrected reads, trimmed reads, AND contigs.fasta"
 echo -e "\n!!! IMPORTANT NOTES !!!\n There is some error that causes canu jobs to end early without generating contigs. This usually happens during the final contig generation stage. It is possibly a memory overuse issue, BUT the job might complete if you resume it. If your job has trimmed reads file and corrected reads file, but no contigs, then run it again with --resume. In fact it is probably best to just try and resume all failed canu runs anyway"
 echo -e "\nCANU has a complex set of options, and this script in its original state has certain set parameters for canu, including: -nanopore, 32g minimum memory, use grid. If you wish to change canus' parameters, the only way to do so is to edit your copy of the script itself. Feel free to do so"
@@ -26,9 +27,10 @@ echo -e "-h, --help\tshow this help message and exit\n"
 
 ### set euclidean options to default setting here
 resume="false"
+isoncorrect="false"
 ###
 
-while getopts i:p:s:G:R:V:rh option
+while getopts i:p:s:G:R:V:Irh option
 do 
     case "${option}" in
         i)input=${OPTARG};;
@@ -39,6 +41,7 @@ do
     R)minread=${OPTARG};;
     V)minoverlap=${OPTARG};;
     r)resume="true";;
+    I)isoncorrect="true";;
     h)Help; exit;;
     esac
 done
@@ -49,7 +52,6 @@ done
 module purge
 eval "$(conda shell.bash hook)"
 conda activate bioinftools
-#CANU=$(which canu) ### if canu MUST be on path, not conda
 
 ####################### SET AND CHECK VARIABLES/ARGUMENTS #####################################
 mkdir -p ${bioinftmp} ## make tmp data storage in scratch
@@ -69,9 +71,6 @@ if [[ -z "${project}" ]]; then echo -e "${red}-p, --project missing"; Help; exit
 if [[ -z "${genomesize}" ]]; then genomesize="10000"; echo -e "${green}Bioinf-assembly-canu is using default genome length 10000 bp ${nocolor}"; fi
 if [[ -z "${minread}" ]]; then minread="1000"; echo -e "${green}Bioinf-assembly-canu is using default read length 1000 bp ${nocolor}"; fi
 if [[ -z "${minoverlap}" ]]; then minoverlap="500"; echo -e "${green}Bioinf-assembly-canu is using default read overlap length 500 bp ${nocolor}"; fi
-
-
-## ONT correct ETC if [[ "${nomap}" == "false" ]]; then echo -e "${green}Bioinf-assembly-canu running WITH mapping${nocolor}"; fi
 
 ### THREADS
 
@@ -101,6 +100,7 @@ if [[ -z "${step}" ]] || [[ "$step" == "A1" ]] && [[ "$resume" == "false" ]]; th
 rm -fr ${TMPDIR}
 mkdir ${TMPDIR}
 rm -fr ${OUTDIR}
+cd ${TMPDIR}
 
 ### if input is a directory, then find fastq.gz within it
 ### if input is a file, and its name includes "fastq.gz", then use it as input
@@ -123,6 +123,33 @@ do
     zcat $f >>  ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp
 done
 
+################################################################################################
+### Perform isONcorrect
+if [[ "$isoncorrect" == "true" ]]; then
+
+echo -e "${cyan}Performing isONcorrect correction on reads before assembly${nocolor}"
+# Pipeline to get high-quality full-length reads from ONT cDNA sequencing
+
+#cdna_classifier.py ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp ${TMPDIR}/IOC-full_length.fq -t ${THREADS}
+cp ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp ${TMPDIR}/IOC-full_length.fq ### lazy way of skipping the cdna_classifier
+isONclust --t ${THREADS} --ont --fastq ${TMPDIR}/IOC-full_length.fq --outfolder ${TMPDIR}/IOC-clustering
+
+isONclust write_fastq --N 1 --clusters ${TMPDIR}/IOC-clustering/final_clusters.tsv --fastq ${TMPDIR}/IOC-full_length.fq --outfolder ${TMPDIR}/IOC-clustering/fastq_files
+
+run_isoncorrect --t ${THREADS} --fastq_folder ${TMPDIR}/IOC-clustering/fastq_files --outfolder ${TMPDIR}/IOC-correction/
+
+# MERGE ALL CORRECTED READS INTO ONE FILE
+rm -f ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp
+touch ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp
+OUTFILES=${TMPDIR}"/IOC-correction/"*"/corrected_reads.fastq"
+for f in $OUTFILES
+do 
+  cat $f >> ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp
+done
+
+fi
+################################################################################################
+
 ### TRIM the barcodes
 porechop -t $THREADS -i ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp -o ${TMPDIR}/${project}.bctrimmedreads.fastq
 pigz -p $THREADS ${TMPDIR}/${project}.bctrimmedreads.fastq
@@ -141,6 +168,8 @@ fi
 ################################################################################################
 if [[ -z "${step}" ]] || [[ "$step" == "A2" ]]; then
 ################################################################################################
+cd ${TMPDIR}
+
 rm -f "${TMPDIR}"/"${project}"
 echo "RUNNING" > "${TMPDIR}"/"${project}"
 
@@ -165,7 +194,7 @@ fi
 ################################################################################################
 if [[ -z "${step}" ]] || [[ "$step" == "A2" ]]; then
 ################################################################################################
-
+cd ${TMPDIR}
 
 ########### the following steps check that the job is running every minute. Once the job is found to be no longer running, the outputs are moved to the final OUTDIR folder from the temporary one and the tmp files are deleted (if run is successful or if it fails due to insufficient read coverage)
 #### this is done to avoid filling up the temporary storage with assembly temporary files, which can be very large

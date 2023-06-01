@@ -19,7 +19,6 @@ echo -e "-s --step\tWhich script steps to run. If not provided, the whole script
 awk '/^###### STEP-/ {print "\t\t"$0}' $(which bioinf-binning.sh)
 echo -e "\n-n, --nomap [optional]\trun without mapping reads to contigs - allows you to run pipeline if you only have an assembly but no reads\n"
 echo -e "-S --splitlength\tinteger to set minimum size of split in bp (default is 20000)\n"
-echo -e "\n! example job submission (to run the whole script with mapping). In these examples, the script will make a folder called ANVIO_JAN23_PHEX within the /home/data folder:\nsbatch /home/dcschroe/dmckeow/projects/DWV/script/anvio.sh -i /home/data/anvio_JAN23_PHEX_SAMPLES1.txt -s A0 -m 2500 -o /home/data -p JAN23_PHEX\n"
 echo -e "\n${green}example job submissions:${nocolor}\n"
 echo -e "\tSUBMIT TO SLURM (see README for more info): ${cyan}sbatch --time=96:00:00 --cpus-per-task=24 --mem=240GB --partition long -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-binning.sh -i /path/to/samplelistfile -p project_name${nocolor}"
 echo -e "\tSUBMIT TO SLURM, running only steps A1 to A3, and without mapping: ${cyan}sbatch --time=96:00:00 --cpus-per-task=24 --mem=240GB --partition long -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-binning.sh -i /path/to/samplelistfile -p project_name -s A1_A2_A3 -n${nocolor}"

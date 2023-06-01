@@ -96,11 +96,11 @@ if ([[ -z "${step}" ]] || [[ "$step" =~ "A2" ]]) && [[ ! -z "${preexisting}" ]];
 
 ### make the empty directories if the pre-exsiting bioinfdb has extra folders
 cd "$bioinfdb"
-for f in $preexisting/*; do
+for f in $preexisting/db/*; do
     mkdir -p $(basename $f)
 done
 ### create symlinks for everything in the main directories
-for f in $preexisting/*; do
+for f in $preexisting/db/*; do
     cd $(basename $f)
         for g in ${f}/*; do
           ln -s $g
@@ -247,8 +247,8 @@ T_O="tmp.A6"
 cd "$bioinftmp"
 
 ### replace all the eukaryotic taxa to include all Eukaryote, plus Archaea and Bacteria in the nr_euk db built by kaiju
-rm -f "$HOME"/.conda/envs/bioinftools/bin/kaiju-taxonlistEuk.tsv
-echo -e "Archaea\nBacteria\nEukaryota" | taxonkit name2taxid - | awk '{print $2"\t"$1}' > "$HOME"/.conda/envs/bioinftools/bin/kaiju-taxonlistEuk.tsv
+rm -f $(which kaiju)-*taxonlistEuk.tsv
+echo -e "Archaea\nBacteria\nEukaryota" | taxonkit name2taxid - | awk '{print $2"\t"$1}' > $(which kaiju)-*taxonlistEuk.tsv
 
 rm -fr "$bioinfdb"/kaiju_rvdb/* rvdb
 kaiju-makedb -s rvdb -t $THREADS
