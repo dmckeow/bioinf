@@ -1,0 +1,54 @@
+Workflow for the UBE step of virus sequence ID in eukaryotic (brown algal) genomes
+The initial lines of each script detail which input files are required, mostly passed to script as variables from the command line ($1, $2, etc).
+
+> UBE01_monoexonregions_V2.sh
+Extracts info from gff file; it identifies uni/bi exonic (UBE) genes which occur in continuous clusters, defined as: >2 UBE genes and intergenetic gaps as specified (<3500 bp).
+The mRNAs in the gff file must have label to distinguish them from toher features (ID=) and also exons=n.
+It is run in tmp/[species_genome].
+
+> UBE02_summary_monoexonregions_V2.sh
+Summarises the occurrence of UBE genes in UBE01_FINAL_[species_genome] per gene/cluster/contig, in gff-like format.
+It also prepares nucleotide and amino acid fastas of all UBE clusters per genome using Bedtools.
+Like UBE01, it is run in tmp/species_genome.
+However, it generates the following important outputs which should be kept in finalresult/[species_genome]
+	-UBE02_FINAL_ALL_[species]				## UBE count summary by gene
+	-xx_nnn							## gffs of individual UBE clusters
+	-UBE02_CN010_${1} & UBE02_CL006_${1}			## UBE count summaries by contig and cluster
+	-[species]_UBE_genes_NT.fa & [species]_UBE_genes_AA.fa 	## nucleotide and amino acid fastas of all UBE clusters per genome
+
+> BLAST stage
+The following scripts run NCBI/Diamond BLASTs as detailed. Diamond is used in place of NCBI for BLASTp because it is faster.
+However this is easily the slowest part of the workflow; it will take overnight to run most of these BLASTs on the UBEs from ~20 genomes.
+	-blast_NT.qsub	## Nucleotide NCBI BLASTn vs general NCBI database nt
+	-blast_VNT.qsub	## Nucleotide NCBI BLASTn vs virus-only database; Reference Viral Database (RVDB)
+	-diamondAA.qsub	## Amino acid Diamond BLASTp vs general NCBI database nr
+	-diamond_VAA.qsub ## Amino acid Diamond BLASTp vs virus-only database; Reference Viral Database (RVDB)
+	-diamond_NCVOG.qsub ## Amino acid Diamond BLASTp vs NCLDV orthologous groups database
+
+> UBE03.1_diamond_sskingdom.sh
+Before proceeding to UBE03, the Diamond BLASTp results of diamondAA.qsub must be given sskingdoms using this script (label of Eukaryota/Bacteria/Archaea/Viruses) to enable categorization later.
+This is not needed for the Diamond searches vs RVDB and NCVGOGs, as these databases are virus-only, so all hits are simply labelled as viral by UBE03.
+
+> UBE03_BLAST-UBE-FINAL-MERGE_V2.sh
+This script counts and summarises all of the BLAST results for genes/clusters/contigs, in gff-like format.
+It ignores redundant hits per genes as it keeps only 1 BLAST hit for counting in decreasing priority from virus (A_A_A) through cellular (B_B_B) to ORFan (C_C_C) and not applicable (D_D_D; because no hits vs a virus-only database is not an ORFan because it may be cellular).
+This means that if a gene has a virus hit IN ANY BLAST it will be counted as virus EVEN IF IT HAS cellular or ORFan hits.
+This is the most complex script and it requires all of the important outputs from UBE02 (listed above) and BLAST outputs. Run it in the directory with all of these outputs.
+UBE03's important outputs are:
+	-UBE03_FINAL_GENE_ALL_[species] UBE03_FINAL_CLUSTER_ALL_[species] UBE03_FINAL_CONTIG_ALL_[species] ### BLAST hit type count summaries
+	-UBE03_[NT/VNT/AA/VAA]008 ### shows all virus BLAST hits
+
+> UBE04_ANNOT.sh
+UBE04 generates a gff-like list of all UBE genes with best BLAST hit (as determined by UBE03) for the NT, VNT, AA, and VAA BLAST results in 1 row per gene.
+Ensure that the NCVOG tabular files (from supplementary data of Yutin et al. 2009. Virol J 6, 223. https://doi.org/10.1186/1743-422X-6-223) are modified as detailed in the inital lines of the script.
+Most, importantly, it also appends the NCVOG BLAST results, which will be used later to identify potential NCLDV core genes.
+Run it in the same directory as UBE03, but redirect the following important output for all genomes to a single directory (finalresult/UBE_fastas)
+	-UBE04_FINAL_ANNOT_$2;
+
+> UBE05_ANNOT_auto.sh
+
+UBE05 generates a list of contig summary data from all genomes. It runs on multiple genomes at once.
+It requires the inputs: species_genome/UBE03_FINAL_CONTIG_ALL_[species_genome] and UBE_fastas/UBE04_FINAL_ANNOT_[species_genome].
+Its important output files are
+
+> UBE06_phylogeny.sh

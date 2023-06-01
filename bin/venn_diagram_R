@@ -1,0 +1,21 @@
+
+
+
+
+
+
+e2 <- e1 %>% group_by(species) %>% summarise(UID = str_c('[',toString(UID),']'))
+e3 <- e1 %>% group_by(flower_genus) %>% summarise(UID = str_c('[',toString(UID),']'))
+
+e3 <- e1 %>% list(e1 %>% group_by(species) %>% summarise(UID = str_c('[',toString(UID),']')) %>% unlist() , e1 %>% group_by(flower_genus) %>% summarise(UID = str_c('[',toString(UID),']')) %>% unlist())
+
+
+e3 <- e1 %>% group_by((species %>% summarise(UID = str_c('[',toString(UID),']')), e1 %>% group_by(flower_genus) %>% summarise(UID = str_c('[',toString(UID),']')) %>% unlist())
+
+e3 <- e1 %>% list(e1 %>% filter(species=='apis') %>% select(UID) %>% unlist() , 
+e1 %>% filter(species=='impatiens') %>% select(UID) %>% unlist() , 
+e1 %>% filter(flower_genus=='Solidago') %>% select(UID) %>% unlist() ,
+e1 %>% filter(flower_genus=='Agastache') %>% select(UID) %>% unlist() ,
+e1 %>% filter(flower_genus=='Trifolium') %>% select(UID) %>% unlist() ,
+e1 %>% filter(flower_genus=='Monarda') %>% select(UID) %>% unlist() ,
+e1 %>% filter(flower_genus=='Lotus') %>% select(UID) %>% unlist())
