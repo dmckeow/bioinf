@@ -242,7 +242,7 @@ cd $OUTDIR
 anvi-get-sequences-for-gene-calls -c ${project}.db -o ${project}_gene_calls.fa
 
 ### run kaiju for all kaiju databases in the bioinfdb
-for f in "$bioinfdb"/kaiju_*; do
+for f in "$bioinfdb"/kaiju*; do
     kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i ${project}_gene_calls.fa -o ${project}_gene_calls.$(basename $f) -z $THREADS -v
     sort -t $'\t' -V -k 2,2 ${project}_gene_calls.$(basename $f) -o ${project}_gene_calls.$(basename $f)
     kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i ${project}_gene_calls.$(basename $f) -o ${project}_gene_calls.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
