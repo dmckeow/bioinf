@@ -1,139 +1,47 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8
 
-####################### PYTHON IMPORTS ###########################
-
-import argparse
 import os
-import subprocess
-import shlex
-import sys
-import pysam
+import argparse
 
-####################### PARSE THE ARGUMENTS AND INPUT FLAGS ###########################
+parser = argparse.ArgumentParser(description="Perform multiple sequence alignment and phylogenetic tree inference from FASTA sequences.", epilog="""USAGE EXAMPLE:     sbatch --time=8:00:00 --cpus-per-task=8 --mem=24GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err --wrap='eval "$(conda shell.bash hook)"; conda activate bioinftools; bioinf-phylogeny.py -i file.fa -p bee_virus_project'""")
+parser.add_argument("-i", "--input", help="Path to input fasta file(s). You can provide multiple paths to files, separated by spaces", required=True, nargs='+')
+parser.add_argument("-p", "--project", help="A name for your project - all output files will include this name", required=True)
+parser.add_argument("-b", "--bootstraps", help="Specifies the number of bootstrap replicates (default 1000).", type=int, default=1000)
+parser.add_argument("-t", "--threads", help="number of threads to use for mafft (default=4)", type=int, default=4)
 
-# create the argparse parser
-parser = argparse.ArgumentParser()
-
-# add the arguments
-parser.add_argument("-i", "--input", required=True, 
-                    help="absolute or relative path to a fasta or alignment file")
-parser.add_argument("-s", "--step", 
-                    help="Which script steps to run. ", 
-                    default="A0")
-parser.add_argument("-s", "--suffix", 
-                    help="A meaningful name for output folder. Any pre-existing driectory at this location and identical name will be deleted. Will also be the name of the merged analyses files. It should be a UNIQUE name that cannot possibly be identical to any other folder within your output destination e.g. -p 11OCT22project will make the folder ANVIO_11OCT22project", default=".canu-read-fate"suffix)
-parser.add_argument("-t", "--threads", 
-                    help="\tNumber of threads (default: 12)", default=12)
-
-# parse the arguments
 args = parser.parse_args()
 
-input = args.input
-step = args.step
-suffix = args.suffix
-threads = args.threads
+input_files = args.input
+##input_files = ' '.join(args.input)
 
-####################### VARIABLES ###########################
-path = os.getcwd() ## set output directory
+project = args.project
+bootstraps = args.bootstraps
 
-####################### SOFTWARE ###########################
+THREADS = args.threads ## use --threads whether provided or not (uses default set in argparse)
+SLURM_THREADS = os.getenv("SLURM_CPUS_PER_TASK") ## if slurm --cpus-per-task provided, overwrite --threads with it instead
+if SLURM_THREADS:
+	THREADS = SLURM_THREADS
+	print(f'Threads set by SLURM --cpus-per-task: {THREADS}')
 
-# KAIJU databases
-kaiju_rvdb = "/panfs/jay/groups/27/dcschroe/shared/tools/kaijudb/rvdb"
-kaiju_nr_euk = "/panfs/jay/groups/27/dcschroe/shared/tools/kaijudb/nr_euk"
-
-##### Seqkit - must be installed locally, e.g.:
-SEQKIT="/panfs/jay/groups/27/dcschroe/shared/tools/seqkit"
-
-##### Diamond - installed locally
-DIAMOND="/panfs/jay/groups/27/dcschroe/shared/tools/diamond"
-
-##### Kaiju - INSTALLED via CONDA
-KAIJU="/panfs/jay/groups/27/dcschroe/dmckeow/.conda/envs/kaiju"
-
-####################### DATABASES ###########################
+tmp_file = "tmp." + project + ".fa"
+aln_file = project + ".aln"
 
 
+# Concatenate reference and input files
+def concatenate_files(input, output):
+    with open(output, 'w') as outfile:
+        for file in input:
+            with open(file, 'r') as infile:
+                outfile.write(infile.read())
 
-####################### OUTPUT FILES #####################################
+concatenate_files(input_files, tmp_file)
 
-####################### SOFTWARE, DATABSES, ETC #####################################
-### LOAD software available via shared environment on server:
-module purge
-eval "$(conda shell.bash hook)"
+# Perform multiple sequence alignment
+os.system(f"mafft --thread {THREADS} --adjustdirectionaccurately --auto --reorder --maxiterate 1000 {tmp_file} > {aln_file}")
 
-########################################################################
-########################################################################
+# Infer phylogenetic tree
+os.system(f"iqtree -s {aln_file} -redo --prefix {project} -m MFP -B {bootstraps} -T {THREADS}")
 
-######### SOFTWARE/OTHER SCRIPTS THAT NEED SETUP BEFORE RUNNING:
+# Remove temporary files
+os.remove(tmp_file)
 
-SEQKIT="/home/dcschroe/dmckeow/seqkit" ## seqkit - installed locally
-
-
-####################### THE SCRIPT #####################################
-S_N="phylogeny_recom_sh" ## script name
-O_N=$(echo ${input} | sed 's/\./_/g') ## output name
-C_S="A1" ## current step name
-T_N="${O_N}-tmp-${S_N}.${C_S}" ## temporary file name
-F_N="${O_N}-final-${S_N}" ## final output file name
-
-################################################################################################
-################################################################################################
-########################################################################
-########################################################################
-
-#################### STEP A1 - alignment #################################
-C_S="A1"
-if [[ -z "$step" ]] || [[ "$step" =~ "$C_S" ]]; then
-  module purge
-  conda deactivate
-  module load mafft
-
-mafft --adjustdirectionaccurately --thread $SLURM_CPUS_PER_TASK --reorder --auto $input > ${F_N}.aln
-
-fi ########################################################################
-
-
-#################### STEP A2 - fast phylogeny #################################
-C_S="A2"
-if [[ -z "$step" ]] || [[ "$step" =~ "$C_S" ]]; then
-  module purge
-  conda deactivate
-  module load fasttree/2.1.8
-
-  if [[ -f "${F_N}.aln" ]]; then
-    FastTree ${F_N}.aln > ${F_N}.fasttree
-  else
-    FastTree ${input}.aln > ${F_N}.fasttree
-  fi
-
-fi ########################################################################
-
-
-
-#################### STEP A3 - slow phylogeny #################################
-C_S="A3"
-if [[ -z "$step" ]] || [[ "$step" =~ "$C_S" ]]; then
-  module purge
-  conda deactivate
-  module load raxml/8.2.9_pthread
-
-raxmlHPC-PTHREADS -T $SLURM_CPUS_PER_TASK -d -f ae -m PROTGAMMAAUTO -p $RANDOM -x $RANDOM -N 200 -s ${input}.aln -n ${input}.200bs.raxml
-
-fi ########################################################################
-
-
-#################### STEP A4 - hyphy GARD analyses #################################
-C_S="A4"
-if [[ -z "$step" ]] || [[ "$step" =~ "$C_S" ]]; then
-  
-module load hyphy/2.5.33
-
-  if [[ -f "${F_N}.aln" ]]; then
-    hyphy CPU=$SLURM_CPUS_PER_TASK gard --alignment ${F_N}.aln
-  else
-    hyphy CPU=$SLURM_CPUS_PER_TASK gard --alignment $input
-  fi
-
-fi ########################################################################

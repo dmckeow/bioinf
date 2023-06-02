@@ -10,7 +10,7 @@
 * Anvi'o is the tool we will use for binning - the developers are the Merenlab, and they have very good guides for [anvi'o](https://anvio.org/), which is capable of many useful analyses
 * First thing is to create a conda environment with Anvi'o 7.1 installed within it
 * Please follow the exact instructions for [installing anvio](https://anvio.org/install/), BUT with one IMPORTANT EXCEPTION - name your environment bioinftools instead of anvio-7.1. The pipeline will look for a conda environment named bioinftools:
-```
+```shell
 ## INSTEAD of:
 conda create -y --name anvio-7.1 python=3.6
  ## do:
@@ -21,7 +21,7 @@ conda create -y --name bioinftools python=3.6
 
 ## INSTALLATION STEP 2 - get other tools
 * Copy paste the following into your terminal:
-```
+```shell
 conda activate bioinftools ## your conda environment must be active to use it, including installing/uninstalling packages
 
 conda install -y -c bioconda kaiju
@@ -32,6 +32,7 @@ conda install -y -c bioconda porechop
 conda install -y -c conda-forge pigz
 conda install -y -c bioconda taxonkit
 conda install -y -c bioconda canu
+conda install -c bioconda mafft
 
 ### packages for isONcorrect:
 pip install isONcorrect
@@ -59,10 +60,10 @@ sbatch --cpus-per-task=24 --time=96:00:00 --mem=240GB --partition ag2tb -o slurm
 * It will also save 100s of GB in storage space by avoiding having separate databases built for each user
 * Creates soft links to files - so each user will work using their own bioinf directory copy. This means they can still add their own custom databases and they will not appear in anyone elses
 * Copy the following code, but replace /path/to/temporary_directory with your system's path to the temporary_directory storage, AND replace /path/to/preexisting/bioinf with the path to a pre-existing bioinf repository:
-```
+```shell
 git clone https://github.com/dmckeow/bioinf.git
 cd bioinf
-bash bioinf-setup.sh -t /path/to/temporary_directory -P /path/to/preexisting/bioinf
+bash bioinf-setup.sh -t /path/to/temporary_directory -P /path/to/preexisting/bioinf ## replace with your actual paths
 ```
 * Temporary storage is specified because some scripts such bioinf-assembly-canu.sh will generate quite large temporary files - so you should choose somewhere with enough capacity to handle 10s to 100s of GB of data. If you are on a SLURM cluster, use the scratch directory!
 * This version of the setup process can be run locally, so we just use "bash" to run it - no SLURM sbatch required
@@ -87,7 +88,7 @@ bioinf-assembly-canu.sh -h
 * Use the script flag --threads to specify thread numbers on non-SLURM systems
 
 * In this example we have a bash script called script_for_submitting_slurm_jobs.sh, which contains the following code:
-```
+```shell
 #!/bin/bash
 #SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=12
@@ -99,11 +100,11 @@ bioinf-assembly-canu.sh -h
 bioinf-binning.sh -i /path/to/samplelistfile -p project_name
 ```
 * Then we submit the batch job script:
-```
+```shell
 sbatch script_for_submitting_slurm_jobs.sh
 ```
 * ALTERNATIVELY, you can sbatch without a script, and do it through the command line instead, which will produce exactly the same result as using the script e.g.:
-```
+```shell
 sbatch --time=24:00:00 --cpus-per-task=12 --mem=240GB --partition long -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-binning.sh -i /path/to/samplelistfile -p project_name
 ```
 
