@@ -32,7 +32,7 @@ conda install -y -c bioconda porechop
 conda install -y -c conda-forge pigz
 conda install -y -c bioconda taxonkit
 conda install -y -c bioconda canu
-conda install -c bioconda mafft
+conda install -y -c bioconda mafft
 
 ### packages for isONcorrect:
 pip install isONcorrect
