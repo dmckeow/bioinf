@@ -3,12 +3,12 @@
 import os
 import argparse
 
-parser = argparse.ArgumentParser(description="Perform multiple sequence alignment and phylogenetic tree inference from FASTA sequences using mafft and IQtree. Autodetects input sequence type and phylogenetic model to use", epilog="""USAGE EXAMPLE:     sbatch --time=8:00:00 --cpus-per-task=8 --mem=24GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err --wrap='eval "$(conda shell.bash hook)"; conda activate bioinftools; bioinf-phylogeny.py -i file.fa -p bee_virus_project'""")
+parser = argparse.ArgumentParser(description="Perform multiple sequence alignment and phylogenetic tree inference from FASTA sequences using mafft and IQtree. Autodetects input sequence type and phylogenetic model to use", epilog="""USAGE EXAMPLE: sbatch --time=8:00:00 --cpus-per-task=8 --mem=24GB --partition partition_name -o slurm.%N.%j.out -e slurm.%N.%j.err --wrap='eval "$(conda shell.bash hook)"; conda activate bioinftools; bioinf-phylogeny.py -i file.fa -p bee_virus_project'""")
 parser.add_argument("-i", "--input", help="Path to input fasta file(s). You can provide multiple paths to files, separated by spaces", required=True, nargs='+')
 parser.add_argument("-p", "--project", help="A name for your project - all output files will include this name", required=True)
 parser.add_argument("-b", "--bootstraps", help="Specifies the number of bootstrap replicates (default 1000).", type=int, default=1000)
-parser.add_argument("-N", "--nophylogeny", action='store_true', help="skip running iqtree phylogeny")
-parser.add_argument("-H", "--hyphy", action='store_true', help="Run hyphy GARD recombination analyses")
+parser.add_argument("-N", "--nophylogeny", action='store_true', help="skip running iqtree phylogeny (default false)")
+parser.add_argument("-H", "--hyphy", action='store_true', help="Run hyphy GARD recombination analyses (default false)")
 parser.add_argument("-t", "--threads", help="number of threads to use for mafft (default=4)", type=int, default=4)
 
 args = parser.parse_args()

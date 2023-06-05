@@ -143,13 +143,15 @@ if [[ -z "${step}" ]] || [[ "$step" =~ "A4" ]]; then
 T_O="tmp.A4"
 
 cd "$bioinfdb"/CUSTOM_HMMS
-rm -fr "$bioinfdb"/CUSTOM_HMMS/*
-pigz -f -p $THREADS -dc "$bioinfdb"/VOGDB/vog.hmm.tar.gz | tar --directory "$bioinfdb"/VOGDB -xf -
+rm -fr VOGDB; mkdir VOGDB; cd VOGDB
+
+rm -fr "$T_O"_VOGDB; mkdir "$T_O"_VOGDB
+
+pigz -f -p $THREADS -dc "$bioinfdb"/VOGDB/vog.hmm.tar.gz | tar --directory ./"$T_O"_VOGDB -xf -
 
 rm -f "$T_O".1; touch "$T_O".1
-for f in "$bioinfdb"/VOGDB/VOG*.hmm; do
+for f in "$T_O"_VOGDB/VOG*.hmm; do
     cat $f >> "$T_O".1
-    rm -f $f
 done
 
 sed -i -E 's/^(NAME +)(VOG[0-9]+)$/\1_____\2_____/g' "$T_O".1
@@ -170,22 +172,12 @@ pigz -f -p $THREADS genes.hmm
 
 zcat genes.hmm.gz | awk '/^NAME *VOG[0-9]+/' | sed -E 's/^NAME +//g' | sort -Vu | awk '{print $0"\tnone""\tVOGDB"}' | sed -z 's/^/gene\taccession\thmmsource\n/1' > genes.txt
 
+echo -e "-E 1e-20" > noise_cutoff_terms.txt
+echo -e "VOGDB" > kind.txt
+echo "https://vogdb.org/" > reference.txt
+echo -e "AA:GENE" > target.txt
 
-rm -fr VOGDB_evalue_min VOGDB_evalue_max
-mkdir VOGDB_evalue_min VOGDB_evalue_max
-
-echo -e "-E 1e-120" > VOGDB_evalue_min/noise_cutoff_terms.txt
-echo -e "-E 1e-20" > VOGDB_evalue_max/noise_cutoff_terms.txt
-
-for f in VOGDB_evalue_m*; do
-    cp genes.hmm.gz $f
-    cp genes.txt $f
-    echo -e "$(basename $f)" > $f/kind.txt
-    echo "https://vogdb.org/" > $f/reference.txt
-    echo -e "AA:GENE" > $f/target.txt
-done
-
-rm -f *"$T_O"* genes.hmm.gz genes.txt
+rm -fr *"$T_O"*
 
 ######################################################################
 fi

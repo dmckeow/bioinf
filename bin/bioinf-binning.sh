@@ -134,10 +134,10 @@ for SETS in $(cat $input)
 do
   CONTIGS=$(echo $SETS | cut -d ";" -f 1)
   PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
-  anvi-script-reformat-fasta $CONTIGS -o ${PROFILENAME}.fa --simplify-names --report-file ${PROFILENAME}.deflinekey -l $mincontigsize --seq-type NT --project "contig_${PROFILENAME}"
+  anvi-script-reformat-fasta $CONTIGS -o ${PROFILENAME}.fa --simplify-names --report-file ${PROFILENAME}.deflinekey -l $mincontigsize --seq-type NT --prefix "contig_${PROFILENAME}"
 done
 
-cd ..
+cd $OUTDIR
 rm -f ${project}.fa
 rm -f ${project}.deflinekey
 touch ${project}.fa
@@ -196,7 +196,7 @@ cd $OUTDIR
 #### run hmm profile, summarise contig stats, and identify COGs
 ### !!! both anvi-run-hmms and anvi-run-ncbi-cogs do NOT include viruses and most eukaryotes
 
-### custom anvio HMM profile dbs - best with HIGH (E-20), MED(E-60), LOW(E-180) evalue copies of each db
+### custom anvio HMM profile dbs 
 
 for f in "$bioinfdb"/CUSTOM_HMMS/*; do
     anvi-run-hmms -c ${project}.db -T $THREADS -H $f --hmmer-program hmmsearch --just-do-it
@@ -316,23 +316,22 @@ anvi-export-contigs --splits-mode -c ${project}.db -o ${project}-SPLITS.fa
 MAXTARGETS=$(seqkit stat -T ${project}-SPLITS.fa | sed '1,1d' | awk -F "\t" '{printf "%0.0f\n", $8/100}')
 
 for f in ${bioinfdb}/CUSTOM_DMND/*; do
-    diamond blastx --max-target-seqs $MAXTARGETS --evalue 1e-120 --sensitive -p $THREADS -d $f -q ${project}-SPLITS.fa -f 6 -o $(basename $f .dmnd).evalue_min.dmnd.blastx
-    diamond blastx --max-target-seqs $MAXTARGETS --evalue 1e-20 --sensitive -p $THREADS -d $f -q ${project}-SPLITS.fa -f 6 -o $(basename $f .dmnd).evalue_max.dmnd.blastx
+    diamond blastx --max-target-seqs $MAXTARGETS --evalue 1e-20 --sensitive -p $THREADS -d $f -q ${project}-SPLITS.fa -f 6 -o $(basename $f .dmnd).evalue_1e-20.dmnd.blastx
 done
 
 ### best hit per split subject combo
-for f in *.evalue_m*.dmnd.blastx; do
+for f in *.evalue_*.dmnd.blastx; do
     awk -F "\t" '!a[$1,$2]++' $f > ${f}.tmp1
 done
 
 
 ### reduce info for each split to split name, number of hits
 
-for f in *.evalue_m*.dmnd.blastx.tmp1; do
+for f in *.evalue_*.dmnd.blastx.tmp1; do
     cut -f 1 $f | sort -V | uniq -c | sed -E 's/ +([0-9]+) (.*)/\2\t\1/g' > $(basename $f .tmp1).tmp2
 done
 
-for f in *.evalue_m*.dmnd.blastx.tmp1; do
+for f in *.evalue_*.dmnd.blastx.tmp1; do
     awk -F "\t" '!a[$1]++' $f | cut -f 1,2 | sort -V -t $'\t' -k 1,1 | cut -f 2 | paste $(basename $f .tmp1).tmp2 - > $(basename $f .tmp1).txt
         sed -i -z "s/^/split\t${f}_num_hits\t${f}_tophit\n/1" $(basename $f .tmp1).txt
         sed -i 's/\.tmp1//g' $(basename $f .tmp1).txt
@@ -341,13 +340,13 @@ done
 for SETS in $(cat $input)
 do
     PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
-        for f in *.evalue_m*.dmnd.blastx.txt; do
+        for f in *.evalue_*.dmnd.blastx.txt; do
             anvi-import-misc-data -p profile_${PROFILENAME}/PROFILE.db --target-data-table items --just-do-it ${f}
         done
 done
 
 
-rm -f *.evalue_m*.dmnd.blastx.tmp*
+rm -f *.evalue_*.dmnd.blastx.tmp*
 
 
 ##############################################################
@@ -373,7 +372,7 @@ cd $OUTDIR
 
             mergedfile="profile_${project}-MERGED/PROFILE.db"
             if [[ -f "$mergedfile" ]]; then
-                for f in *.evalue_m*.dmnd.blastx.txt; do
+                for f in *.evalue_*.dmnd.blastx.txt; do
                  anvi-import-misc-data -p profile_${project}-MERGED/PROFILE.db --target-data-table items --just-do-it ${f}
                 done
             fi
@@ -431,7 +430,7 @@ fi
 if [[ "$clean" == "true" ]]; then
 cd $OUTDIR
 
-rm -f *.evalue_m*.dmnd.blastx*
+rm -f *.evalue_*.dmnd.blastx*
 rm -f *.bai *.bam
 rm -fr ${project}_*-annot
 
