@@ -1,8 +1,3 @@
-db/
-bin/amplicont.sh
-bin/datasync1.sh
-bin/datasync2.sh
-bin/get_ref_genomes.sh
-bin/OLD_scripts/
-bin/postbin_heatmap.r
-bin/SBR/
+/db/
+/slurm*
+/bin/*/
