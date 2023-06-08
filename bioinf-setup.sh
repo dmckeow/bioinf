@@ -6,28 +6,35 @@ echo -e "${green}RUNNING bioinf-setup with the following parameters: $@ ${nocolo
 
 Help()
 {
+echo -e "${red}This script is for preparing all of the databases and variables needed to run the bioinf pipelines. FOLLOW the guide to use this script in the README.md OR at https://github.com/dmckeow/bioinf${nocolor}"
+echo -e "\n${cyan}REQUIRED PARAMETERS${nocolor}"
 echo -e "${green}This script will setup the databases needed for the all of the Schroeder lab scripts and pipelines. Run this script from the directory in which it is found${nocolor}"
-echo -e "${red}NOTE 1 - some of the databases generated are quite large - currently around 200 GB for the kaiju databases. If someone in your group has already ran this full script, then you could save space and time by simply running this script with the --preexisting option${nocolor}"
+echo -e "${red}NOTE 1 - some of the databases generated are quite large - currently around 200 GB for the kaiju databases. If someone in your group has already ran this full script, then you could save space and time by simply running this script with the --shared option${nocolor}"
 echo -e "${green}NOTE 2 - Similarly, if you want to update your system's paths to your own scripts and databases, without re-downloading or setting up anything, simply run Step A1 of this script on its own - e.g. -s A1 ${nocolor}"
-echo -e "-t --tmp\tThe absolute path to a temporary large storage folder - e.g. /scratch.global - a folder named after your username will be made there"
-echo -e "\n-s --step\t[optional] Which script steps to run. If blank, whole script is run. You can run multiple specific steps - e.g. A1_A2_A6 will only run steps A1, A2 and A6"
+echo -e "-t --tmp\tThe absolute path to a temporary large storage folder - ${cyan} a folder named after your username will be made there${nocolor}"
+echo -e "-d --db\tThe absolute path to where you want your bioinf db setup - a ${cyan}folder named bioinfdb will be made there${nocolor}. Best not to put the database in the bioinf folder"
+echo -e "\n${cyan}OPTIONAL PARAMETERS${nocolor}"
+echo -e "\n-s --step\t Which script steps to run. If blank, whole script is run. You can run multiple specific steps - e.g. A1_A2_A6 will only run steps A1, A2 and A6"
 echo -e "\t${green}STEPS AVAILABLE: ${nocolor}"
 awk '/^###### STEP-/ {print "\t\t"$0}' bioinf-setup.sh
-echo -e "-P --preexisting\t[optional] The absolute path to a previously setup bioinf db directory e.g. /home/bioinf/db - with this option provided, the script will make soft links to all the database files found within the pre-existing bioinf setup, and link your setup to them. Doing this avoids having to re-download and rebuild databases that might already exist within your system or computing group"
-echo -e "-d --dmnd\t[optional] A protein fasta file to generate an additional custom dmnd database. Use -s B1 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
-echo -e "-k --kaiju\t[optional] Specify one of kaiju's databses to build, in addition to the defaults made by this script. Do kaiju-makedb --help to see the options (with the conda environment bioinftools active) - e.g. -k fungi . Use -s B2 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
+echo -e "-S --shared\t The absolute path to a previously setup bioinf db directory e.g. /home/BIOINFDB - with this option provided, the script will make soft links to all the database files found within the pre-existing shared bioinf setup, and link your setup to them. Doing this avoids having to re-download and rebuild databases that might already exist within your system or computing group"
+echo -e "-D --dmnd\t A protein fasta file to generate an additional custom dmnd database. Use -s B1 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
+echo -e "-k --kaiju\t Specify one of kaiju's databses to build, in addition to the defaults made by this script. Do kaiju-makedb --help to see the options (with the conda environment bioinftools active) - e.g. -k fungi . Use -s B2 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
 echo -e "-T, --threads\tnumber of threads for job (SLURM --cpus-per-task does the same thing); default 1"
 echo -e "-h, --help\tshow this help message and exit\n"
-echo -e "\nEXAMPLES FOR RUNNING SCRIPT:\n\tSUBMIT TO SLURM (see README for more info):\nEXAMPLES FOR RUNNING SCRIPT:${cyan}sbatch --cpus-per-task=12 --time=96:00:00 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /scratch.global${nocolor}"
+echo -e "\nEXAMPLES FOR RUNNING SCRIPT:\n\tFRESH SETUP VIA SLURM (see README for more info):\n${cyan} sbatch --cpus-per-task=12 --time=96:00:00 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow${nocolor}"
+echo -e "\tSETUP USING A SHARED DATABASE (see README for more info):\n${cyan} bash bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -S /home/shared/bioinfdb${nocolor}"
+echo -e "\tUPDATE ONLY THE ENVIRONMENTAL VARIABLES WITHOUT CHANGING ANYTHING ELSE (see README for more info):\n${cyan} bash bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -s A1${nocolor}"
 }
 
-while getopts t:s:P:d:k:T:h option
+while getopts t:d:s:S:D:k:T:h option
 do 
     case "${option}" in
         s)step=${OPTARG};;
         t)tmp=${OPTARG};;
-        P)preexisting=${OPTARG};;
-        d)dmnd=${OPTARG};;
+        d)db=${OPTARG};;
+        S)shared=${OPTARG};;
+        D)dmnd=${OPTARG};;
         k)kaiju=${OPTARG};;
         T)threads=${OPTARG};;
         h)Help; exit;;
@@ -37,9 +44,15 @@ done
 
 
 ####################### SET AND CHECK VARIABLES/ARGUMENTS #####################################
+
 if [[ -z "${tmp}" ]]; then echo -e "${red}-t, --tmp REQUIRED. You must provide the script a location to place the large temporary files from various processes${nocolor}"; exit; fi
 
-if [[ ! -z "${preexisting}" ]]; then step="A1_A2"; echo -e "${red}Running with --preexisting option: setup will create soft links to all files/folders within: ${preexisting}${nocolor}"; fi
+if [[ -z "${db}" ]]; then echo -e "${red}-d, --db REQUIRED. You must provide the script a location to build the database${nocolor}"; exit; fi
+
+BIOINFDB="${db}/bioinfdb"
+BIOINFTMP="${tmp}/${USER}"
+
+if [[ ! -z "${shared}" ]]; then step="A1_A2"; echo -e "${red}Running with --shared option: creating symbolic links to all files/folders from origin: ${shared} to destination: ${BIOINFDB}${nocolor}"; fi
 
 
 ### THREADS
@@ -54,7 +67,12 @@ echo -e "\t${THREADS} threads"
 ####################### CHECK FOR DEPENDENCIES #####################################
 
 if [[ ! -f ./bioinf-setup.sh ]]; then echo "NOT in the bioinf directory where this script is located - cd there and try again"; exit; fi
+
+if [[ ! -f $HOME/.bashrc ]]; then echo "You don't have a file named .bashrc in your home directory, which bioinf setup needs"; exit; fi
+
 if [[ -z $(conda env list | grep "bioinftools") ]]; then echo "NO conda environment for bioinftools found - see README"; else echo "conda environment for bioinftools FOUND"; fi
+
+echo -e "${red}ONCE your setup is done, don't forget to do:${nocolor} source ~/.bashrc OR logout and back in again"
 
 ####################### DATABASES #####################################
 
@@ -77,36 +95,51 @@ sed -i '/.*BIOINF - SCHROEDER.*/d' $HOME/.bashrc ## remove any previous environm
 
 sed -i -z "s|$|\n###### ENV VARS FOR BIOINF - SCHROEDER GROUP UMN ######\nexport PATH=\"$PWD/bin:\$PATH\" ###### BIOINF - SCHROEDER\n|g" $HOME/.bashrc ## export all scripts in bin to the path
 
-sed -i -z "s|$|export bioinfdb=$PWD/db ###### BIOINF - SCHROEDER\n|g" $HOME/.bashrc ## export path for database directory 
-sed -i -z "s|$|export bioinftmp=$tmp/$USER ###### BIOINF - SCHROEDER\n|g" $HOME/.bashrc ## export path for tmp directory 
+sed -i -z "s|$|export bioinfdb=${BIOINFDB} ###### BIOINF - SCHROEDER\n|g" $HOME/.bashrc ## export path for database directory 
+sed -i -z "s|$|export bioinftmp=${BIOINFTMP} ###### BIOINF - SCHROEDER\n|g" $HOME/.bashrc ## export path for tmp directory 
 
-source $HOME/.bashrc
+### IF no steps are specified (running the WHOLE process = fresh install), then delete previous bioinfdb
+if [[ -z "${step}" ]]; then
+    rm -fr $BIOINFTMP
+    rm -fr $BIOINFDB
+fi
 
-mkdir -p "$bioinftmp"
-mkdir -p "$bioinfdb"/{CUSTOM_DMND,CUSTOM_HMMS,kaiju_nr_euk,kaiju_rvdb,VOGDB} ### make folders for the databases
+mkdir -p "$BIOINFTMP"
+mkdir -p "$BIOINFDB"/{DMND,HMM,KAIJU,VOGDB} ### make folders for the databases
+
+echo -e "${cyan}Directory for bioinf temporary files is now: ${BIOINFTMP}${nocolor}"
+echo -e "${cyan}Directory for bioinf databases is now: ${BIOINFDB}${nocolor}"
 
 ######################################################################
 fi
 ######################################################################
 
-###### STEP-A2: create links to a pre-existing database setup for bioinf
+###### STEP-A2: create links to a pre-existing shared database setup for bioinf
 ######################################################################
-if ([[ -z "${step}" ]] || [[ "$step" =~ "A2" ]]) && [[ ! -z "${preexisting}" ]]; then
+if ([[ -z "${step}" ]] || [[ "$step" =~ "A2" ]]) && [[ ! -z "${shared}" ]]; then
 ######################################################################
 
-### make the empty directories if the pre-exsiting bioinfdb has extra folders
-cd "$bioinfdb"
-for f in $preexisting/db/*; do
-    mkdir -p $(basename $f)
+### make the same directories in pre-existing shared database
+cd "$shared"
+find * -type d > "$BIOINFDB"/tmp.dirlist
+
+cd "$BIOINFDB"
+for f in $(cat "$BIOINFDB"/tmp.dirlist); do
+    mkdir -p $f
 done
-### create symlinks for everything in the main directories
-for f in $preexisting/db/*; do
-    cd $(basename $f)
-        for g in ${f}/*; do
-          ln -s $g
-        done
-    cd "$bioinfdb"
-done
+
+### create symlinks for all FILES within shared database
+cd "$shared"
+find $shared -type f > "$BIOINFDB"/tmp.filelist1
+find * -type f > "$BIOINFDB"/tmp.filelist2
+paste "$BIOINFDB"/tmp.filelist1 "$BIOINFDB"/tmp.filelist2 > "$BIOINFDB"/tmp.filelist3
+
+cd "$BIOINFDB"
+while IFS=$'\t' read -r origin destination
+    do ln -s "$origin" "$destination"
+done < tmp.filelist3
+
+rm -f tmp.*list*
 
 exit
 ######################################################################
@@ -119,8 +152,8 @@ if [[ -z "${step}" ]] || [[ "$step" =~ "A3" ]]; then
 ######################################################################
 T_O="tmp.A3"
 
-cd "$bioinfdb"/VOGDB
-rm -fr "$bioinfdb"/VOGDB/*
+cd "$BIOINFDB"/VOGDB
+rm -fr "$BIOINFDB"/VOGDB/*
 ##### get latest VOGDB - a database of curated core genes for a wide range of virus groups
 ## also creates a file that will add more all useful info to VOGs
 ### get latest VOGDB
@@ -142,12 +175,12 @@ if [[ -z "${step}" ]] || [[ "$step" =~ "A4" ]]; then
 ######################################################################
 T_O="tmp.A4"
 
-cd "$bioinfdb"/CUSTOM_HMMS
+cd "$BIOINFDB"/HMM
 rm -fr VOGDB; mkdir VOGDB; cd VOGDB
 
 rm -fr "$T_O"_VOGDB; mkdir "$T_O"_VOGDB
 
-pigz -f -p $THREADS -dc "$bioinfdb"/VOGDB/vog.hmm.tar.gz | tar --directory ./"$T_O"_VOGDB -xf -
+pigz -f -p $THREADS -dc "$BIOINFDB"/VOGDB/vog.hmm.tar.gz | tar --directory ./"$T_O"_VOGDB -xf -
 
 rm -f "$T_O".1; touch "$T_O".1
 for f in "$T_O"_VOGDB/VOG*.hmm; do
@@ -155,7 +188,7 @@ for f in "$T_O"_VOGDB/VOG*.hmm; do
 done
 
 sed -i -E 's/^(NAME +)(VOG[0-9]+)$/\1_____\2_____/g' "$T_O".1
-sed 's/^\/_____/\/^NAME  _____/g' "$bioinfdb"/VOGDB/VOGDB_add_info > "$T_O".2
+sed 's/^\/_____/\/^NAME  _____/g' "$BIOINFDB"/VOGDB/VOGDB_add_info > "$T_O".2
 
 rm -f *"$T_O".1.part.*
 
@@ -189,42 +222,42 @@ if [[ -z "${step}" ]] || [[ "$step" =~ "A5" ]]; then
 ######################################################################
 T_O="tmp.A5"
 
-cd "$bioinfdb"/CUSTOM_DMND
-rm -fr "$bioinfdb"/CUSTOM_DMND/*
-rm -fr "$bioinfdb"/VOGDB/tmp_VOG_faa; mkdir "$bioinfdb"/VOGDB/tmp_VOG_faa;
-pigz -f -p $THREADS -dc "$bioinfdb"/VOGDB/vog.faa.tar.gz | tar --directory "$bioinfdb"/VOGDB/tmp_VOG_faa -xf -
+cd "$BIOINFDB"/DMND
+rm -fr "$BIOINFDB"/DMND/*
+rm -fr "$BIOINFDB"/VOGDB/tmp_VOG_faa; mkdir "$BIOINFDB"/VOGDB/tmp_VOG_faa;
+pigz -f -p $THREADS -dc "$BIOINFDB"/VOGDB/vog.faa.tar.gz | tar --directory "$BIOINFDB"/VOGDB/tmp_VOG_faa -xf -
 
-for f in "$bioinfdb"/VOGDB/tmp_VOG_faa/VOG*.faa; do
+for f in "$BIOINFDB"/VOGDB/tmp_VOG_faa/VOG*.faa; do
   V=$(basename $f | sed 's/\.faa//g');
   awk '{if($0 ~ ">") gsub(/ .*/,"",$0)}1' $f | sed "s/>/>$V./g" > ${f}.2
 done
 
-rm -f "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4; touch "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4
-for f in "$bioinfdb"/VOGDB/tmp_VOG_faa/VOG*.faa.2; do
-    cat $f >> "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4
+rm -f "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4; touch "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4
+for f in "$BIOINFDB"/VOGDB/tmp_VOG_faa/VOG*.faa.2; do
+    cat $f >> "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4
 done
 
-sed -i -E 's/>(VOG[0-9]+)(\..+)/>_____\1_____\2/g' "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4
+sed -i -E 's/>(VOG[0-9]+)(\..+)/>_____\1_____\2/g' "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4
 
-N=$(wc -l "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4 | awk -F " " -v S="$THREADS" '{printf "%0.0f\n" ,$1/S}')
-split -d -l $N "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4 "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4.part.
+N=$(wc -l "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4 | awk -F " " -v S="$THREADS" '{printf "%0.0f\n" ,$1/S}')
+split -d -l $N "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4 "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4.part.
 
-for f in "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4.part.*; do
-    sed -f "$bioinfdb"/VOGDB/VOGDB_add_info $f > ${f}.tmp5 &
+for f in "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4.part.*; do
+    sed -f "$BIOINFDB"/VOGDB/VOGDB_add_info $f > ${f}.tmp5 &
 done
 wait
 
-rm -f "$bioinfdb"/VOGDB/vog.modified.faa; touch "$bioinfdb"/VOGDB/vog.modified.faa
-for f in "$bioinfdb"/VOGDB/tmp_VOG_faa/tmp4.part.*.tmp5; do
-    cat $f >> "$bioinfdb"/VOGDB/vog.modified.faa
+rm -f "$BIOINFDB"/VOGDB/vog.modified.faa; touch "$BIOINFDB"/VOGDB/vog.modified.faa
+for f in "$BIOINFDB"/VOGDB/tmp_VOG_faa/tmp4.part.*.tmp5; do
+    cat $f >> "$BIOINFDB"/VOGDB/vog.modified.faa
 done
 
 rm -f vog.dmnd
-diamond makedb --threads $THREADS --in "$bioinfdb"/VOGDB/vog.modified.faa -d vog.dmnd
+diamond makedb --threads $THREADS --in "$BIOINFDB"/VOGDB/vog.modified.faa -d vog.dmnd
 
-pigz -f -p $THREADS "$bioinfdb"/VOGDB/vog.modified.faa
+pigz -f -p $THREADS "$BIOINFDB"/VOGDB/vog.modified.faa
 
-rm -fr "$bioinfdb"/VOGDB/tmp_VOG_faa
+rm -fr "$BIOINFDB"/VOGDB/tmp_VOG_faa
 
 ######################################################################
 fi
@@ -236,24 +269,24 @@ if [[ -z "${step}" ]] || [[ "$step" =~ "A6" ]]; then
 ######################################################################
 T_O="tmp.A6"
 
-cd "$bioinftmp"
+cd "$BIOINFTMP"
 
 ### replace all the eukaryotic taxa to include all Eukaryote, plus Archaea and Bacteria in the nr_euk db built by kaiju
 rm -f $(which kaiju)-*taxonlistEuk.tsv
 echo -e "Archaea\nBacteria\nEukaryota" | taxonkit name2taxid - | awk '{print $2"\t"$1}' > $(which kaiju)-*taxonlistEuk.tsv
 
-rm -fr "$bioinfdb"/kaiju_rvdb/* rvdb
+rm -fr "$BIOINFDB"/KAIJU/rvdb/* rvdb
 kaiju-makedb -s rvdb -t $THREADS
-cp rvdb/kaiju_db_rvdb.fmi "$bioinfdb"/kaiju_rvdb/kaiju_db_rvdb.fmi
-cp names.dmp "$bioinfdb"/kaiju_rvdb/names.dmp
-cp nodes.dmp "$bioinfdb"/kaiju_rvdb/nodes.dmp
+cp rvdb/kaiju_db_rvdb.fmi "$BIOINFDB"/KAIJU/rvdb/kaiju_db_rvdb.fmi
+cp names.dmp "$BIOINFDB"/KAIJU/rvdb/names.dmp
+cp nodes.dmp "$BIOINFDB"/KAIJU/rvdb/nodes.dmp
 rm -fr rvdb names.dmp nodes.dmp
 
-rm -fr "$bioinfdb"/kaiju_nr_euk/* nr_euk
+rm -fr "$BIOINFDB"/KAIJU/nr_euk/* nr_euk
 kaiju-makedb -s nr_euk -t $THREADS
-cp nr_euk/kaiju_db_nr_euk.fmi "$bioinfdb"/kaiju_nr_euk/kaiju_db_nr_euk.fmi
-cp names.dmp "$bioinfdb"/kaiju_nr_euk/names.dmp
-cp nodes.dmp "$bioinfdb"/kaiju_nr_euk/nodes.dmp
+cp nr_euk/kaiju_db_nr_euk.fmi "$BIOINFDB"/KAIJU/nr_euk/kaiju_db_nr_euk.fmi
+cp names.dmp "$BIOINFDB"/KAIJU/nr_euk/names.dmp
+cp nodes.dmp "$BIOINFDB"/KAIJU/nr_euk/nodes.dmp
 rm -fr nr_euk names.dmp nodes.dmp
 
 ######################################################################
@@ -265,10 +298,10 @@ fi
 ######################################################################
 if ([[ -z "${step}" ]] || [[ "$step" =~ "B1" ]]) && [[ ! -z "${dmnd}" ]]; then
 ######################################################################
-cd "$bioinfdb"/CUSTOM_DMND
+cd "$BIOINFDB"/DMND
 
 dbname=$(basename ${dmnd} | sed 's/\./_/g')
-diamond makedb --threads $THREADS --in ${dmnd} -d "$bioinfdb"/VOGDB/${dname}.dmnd
+diamond makedb --threads $THREADS --in ${dmnd} -d "$BIOINFDB"/VOGDB/${dname}.dmnd
 
 ######################################################################
 fi
@@ -280,14 +313,14 @@ fi
 if ([[ -z "${step}" ]] || [[ "$step" =~ "B2" ]]) && [[ ! -z "${kaiju}" ]]; then
 ######################################################################
 
-cd "$bioinftmp"
+cd "$BIOINFTMP"
 
 
-rm -fr "$bioinfdb"/kaiju_${kaiju}/* ${kaiju}
+rm -fr "$BIOINFDB"/KAIJU/${kaiju}/* ${kaiju}
 kaiju-makedb -s ${kaiju} -t $THREADS
-mv ${kaiju}/kaiju_db_*.fmi "$bioinfdb"/kaiju_${kaiju}
-mv names.dmp "$bioinfdb"/kaiju_${kaiju}
-mv nodes.dmp "$bioinfdb"/kaiju_${kaiju}
+mv ${kaiju}/kaiju_db_*.fmi "$BIOINFDB"/KAIJU/${kaiju}
+mv names.dmp "$BIOINFDB"/KAIJU/${kaiju}
+mv nodes.dmp "$BIOINFDB"/KAIJU/${kaiju}
 rm -fr ${kaiju} names.dmp nodes.dmp
 
 

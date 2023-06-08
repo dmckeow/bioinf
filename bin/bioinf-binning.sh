@@ -85,11 +85,11 @@ echo -e "${green}bioinf temporary working space is set to '$bioinftmp' ${nocolor
 
 if [[ ! -d "$bioinfdb" ]]; then echo -e "${red}NO database directory for bioinftools found - see README and bioinf-setup.sh in bioinf directory ${nocolor}"; exit; fi
 
-if [[ -z "$(ls -A "$bioinfdb"/CUSTOM_DMND)" ]]; then echo -e "${red}NO databases for DIAMOND found - see README and bioinf-setup.sh in bioinf directory ${nocolor}"; fi
+if [[ -z "$(ls -A "$bioinfdb"/DMND)" ]]; then echo -e "${red}NO databases for DIAMOND found - see README and bioinf-setup.sh in bioinf directory ${nocolor}"; fi
 
-if [[ -z "$(ls -A "$bioinfdb"/CUSTOM_HMMS)" ]]; then echo -e "${red}NO databases for HMMS found - see README and bioinf-setup.sh in bioinf directory ${nocolor}"; fi
+if [[ -z "$(ls -A "$bioinfdb"/HMM)" ]]; then echo -e "${red}NO databases for HMMS found - see README and bioinf-setup.sh in bioinf directory ${nocolor}"; fi
 
-if [[ -z "$(ls -A "$bioinfdb"/kaiju*)" ]]; then echo -e "${red}NO databases for Kaiju found - see README and bioinf-setup.sh in bioinf directory ${nocolor}"; fi
+if [[ -z "$(ls -A "$bioinfdb"/KAIJU/*)" ]]; then echo -e "${red}NO databases for Kaiju found - see README and bioinf-setup.sh in bioinf directory ${nocolor}"; fi
 
 if [[ -z "$(ls -A "$bioinfdb"/VOGDB)" ]]; then echo -e "${red}NO databases for VOGDB found - see README and bioinf-setup.sh in bioinf directory ${nocolor}"; fi
 
@@ -198,7 +198,7 @@ cd $OUTDIR
 
 ### custom anvio HMM profile dbs 
 
-for f in "$bioinfdb"/CUSTOM_HMMS/*; do
+for f in "$bioinfdb"/HMM/*; do
     anvi-run-hmms -c ${project}.db -T $THREADS -H $f --hmmer-program hmmsearch --just-do-it
 done
 
@@ -210,7 +210,7 @@ done
 
 
 ###### export HMMs hits per gene and import them as annotations
-for f in "$bioinfdb"/CUSTOM_HMMS/*; do
+for f in "$bioinfdb"/HMM/*; do
     rm -fr ${project}_$(basename $f)-annot; mkdir ${project}_$(basename $f)-annot
     anvi-script-get-hmm-hits-per-gene-call -c ${project}.db --hmm-source $(basename $f) -o ${project}_$(basename $f)-annot/hits_per_gene_call.tmp1
 done
@@ -242,7 +242,7 @@ cd $OUTDIR
 anvi-get-sequences-for-gene-calls -c ${project}.db -o ${project}_gene_calls.fa
 
 ### run kaiju for all kaiju databases in the bioinfdb
-for f in "$bioinfdb"/kaiju*; do
+for f in "$bioinfdb"/KAIJU/*; do
     kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i ${project}_gene_calls.fa -o ${project}_gene_calls.$(basename $f) -z $THREADS -v
     sort -t $'\t' -V -k 2,2 ${project}_gene_calls.$(basename $f) -o ${project}_gene_calls.$(basename $f)
     kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i ${project}_gene_calls.$(basename $f) -o ${project}_gene_calls.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
@@ -315,7 +315,7 @@ anvi-export-contigs --splits-mode -c ${project}.db -o ${project}-SPLITS.fa
 
 MAXTARGETS=$(seqkit stat -T ${project}-SPLITS.fa | sed '1,1d' | awk -F "\t" '{printf "%0.0f\n", $8/100}')
 
-for f in ${bioinfdb}/CUSTOM_DMND/*; do
+for f in ${bioinfdb}/DMND/*; do
     diamond blastx --max-target-seqs $MAXTARGETS --evalue 1e-20 --sensitive -p $THREADS -d $f -q ${project}-SPLITS.fa -f 6 -o $(basename $f .dmnd).evalue_1e-20.dmnd.blastx
 done
 

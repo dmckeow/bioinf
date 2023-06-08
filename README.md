@@ -45,12 +45,12 @@ conda install -c bioconda "pychopper>=2.0"
 
 ## INSTALLATION STEP 3 - download and setup bioinf pipelines, scripts, and databases
 
-### For a fresh setup
+### 3a. For a fresh setup
 * If you are creating a fresh setup for bioinf, copy the following, but replace /path/to/temporary_directory with your system's path to the temporary_directory storage:
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
 cd bioinf
-sbatch --cpus-per-task=24 --time=96:00:00 --mem=240GB --partition your_partition -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /path/to/temporary_directory
+sbatch --cpus-per-task=24 --time=96:00:00 --mem=240GB --partition your_partition -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/create/database/within
 ```
 * The setup will now run, and it will probably take overnight to complete, because it is building some large databases such as nr for Kaiju. Once it is finished, do:
 ```shell
@@ -58,18 +58,29 @@ source ~/.bashrc ## OR logout and log back in
 ```
 * Note that this example is for submitting to a SLURM cluster - the parameters before bioinf-setup.sh are SLURM and system specific - change them according to your own requirements.
 
-### For a pre-existing setup
-* If you or someone within your group has already setup bioinf, then consider doing this instead - it will simply configure your version of bioinf to run using the pre-existing setup. This will complete within minutes and save 100s in GB of storage space.
-* Creates soft links to pre-existing databases. Each user still has their own database directory. Each user can then add/remove databases without affecting anyone elses database setup
-* Copy the following code, but replace /path/to/temporary_directory with your system's path to the temporary_directory storage, AND replace /path/to/preexisting/bioinf with the path to a pre-existing bioinf repository:
+### 3b. IF your computing group has a pre-existing bioinfdb that you can share:
+* If someone has already setup bioinf by running the full bioinf-setup.sh script (and you have access permissions to it), then consider doing this instead - it will simply configure your version of bioinf to run using the pre-existing setup. This will complete within minutes and save 100s in GB of storage space.
+* Creates symbolic links to pre-existing databases. Each user still has their own database directory. Each user can then add/remove databases without affecting anyone elses database setup (EXCEPT that deleting files in the original database will remove them from all linked db copies)
+* Copy the following code, but with your own paths:
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
 cd bioinf
-bash bioinf-setup.sh -t /path/to/temporary_directory -P /path/to/preexisting/bioinf ## replace with your actual paths
+bash bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/create/database/within -S /path/to/shared/bioinfdb ## replace with your actual paths
 source ~/.bashrc ## OR logout and log back in
 ```
 * Temporary storage is specified because some scripts such as bioinf-assembly-canu.sh will generate quite large temporary files - so you should choose somewhere with enough capacity to handle 10s to 100s of GB of data. If you are on a SLURM cluster, use the scratch directory!
 * This version of the setup process can be run locally, so we just use "bash" to run it - no SLURM sbatch required
+
+### 3c. To update only the locations of the databases and script files, i.e. if you just want to reconnect your copy of bioinf with your own bioinfdb
+* This is useful if you need to change the location of your bioinf, bioinfdb, or bioinftmp
+* Intended for a user to connect to their own database
+```shell
+git clone https://github.com/dmckeow/bioinf.git
+cd bioinf
+bash bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/directory/containing/bioinfdb  ## replace with your actual paths
+source ~/.bashrc ## OR logout and log back in
+```
+
 
 ## And that is the installation and setup done!
 
@@ -156,7 +167,7 @@ ___
 * For the most part, these scripts are modular and do not depend on you having run any other particular script. Exceptions to this will share common name structure - e.g. scripts beginning with `bioinf-binning` are part of a set workflow, i.e. you must run `bioinf-binning.sh` before running `bioinf-binning-summarise.sh`
 ### bioinf-assembly-canu.sh
 ### bioinf-binning.sh
-### bioinf-binning-summarise.sh
+### bioinf-binning-summarise.sh (WORK IN PROGRESS)
 ### bioinf-phylogeny.py
 
 ___
@@ -167,16 +178,57 @@ ___
 * Are your viruses not in nice, neat bins? Try this - in the anvi-interactive interface, under the "Main tab", click "Items Order", and select "Sequence Composition (D: Euclidean; L: Ward)"
 
 ### Customising the databases
-* The database directories `bioinf/db/CUSTOM_DMND` and `bioinf/db/CUSTOM_HMMS` are customisable. If you place correctly formatted database files in these directories, then the pipeline will use them. Your plots and annotations will contain results from whatever databases the pipeline finds in these directories.
-* You can delete any databases built by the setup script
-* Use soft links to databases files that already exist on your system to avoid space wastage - e.g. `ln -s /path/to/big_database_file /path/to/my/bioinf/db/CUSTOM_DMND`
-* Please see the bioinf-setup script - it has a step that can build any custom DIAMOND database you want
-* For custom HMMs you are unfortunately on your own, because anvi'o requires a very specific and annoying set of files to run a custom HMM as detailed [here](https://merenlab.org/2016/05/21/archaeal-single-copy-genes/). Alternatively, you can look at the files in bioinf/db/CUSTOM_HMMS created by the bioinf-setup script and copy their format
+* All of the database directories are customisable - meaning that whatever you place there will be used by the pipelines (so long as it is the correct format and in the correct directory)
+* No specific databases are required by the pipelines, but having NO databases in any of these database directories will cause some scripts to complain. Some scripts may not work if certain database categories were not used at all.
+```shell
+bioinfdb
+    |------DMND ## .dmnd database files built by diamond makedb (see below)
+    |
+    |------HMM ## subdirectories each containing a single hmmer profile built from a set of reference proteins (see below)
+    |
+    |------KAIJU ## subdirectories each containing a single kaiju database built by kaiju-makedb (see below)
+    |
+    |------VOGDB ## this is simply a copy of VOGDB. There is no reason to customise this
 
-#### Customising the kaiju databases
-* Please see the bioinf-setup script - it has an extra step that allows you to build other kraken databases
-* Note that is simply telling Kaiju to build one of the databases from it predetermined databses as detailed [here](https://github.com/bioinformatics-centre/kaiju)
-* Any correctly formatted kaiju database will be used by the pipeline - it MUST be `bioinf/db/kaiju< specific database name >` e.g. `bioinf/db/kaiju_rvdb`
-* Use soft links to databases files that already exist on your system to avoid space wastage - e.g. `ln -s /path/to/big_database_file /path/to/my/bioinf/db/CUSTOM_DMND`
-* Note that the setup script creates a kaiju database for viruses and bacteria/archaea/eukaryota
+```
+* Use soft links to databases files that already exist on your system to avoid space wastage - e.g. `ln -s /path/to/shared/nr.dmnd /path/to/my/bioinfdb/DMND/nr.dmnd`
 
+#### DMND
+* Easy! A diamond database file is just a single .dmnd file. See [diamond](https://github.com/bbuchfink/diamond). Also:
+```shell
+conda activate bioinftools
+diamond makedb -h
+## OR
+bash bioinf/bioinf-setup.sh -h ## see STEP B1 for diamond makedb
+```
+#### HMM
+* Annoying! Unfortunately, anvi'o requires a specific and stupid set of 6 files to run a custom HMM as detailed [here](https://merenlab.org/2016/05/21/archaeal-single-copy-genes/):
+```shell
+genes.hmm.gz ## hmm profile generated from a sequence set using HMMER3
+genes.txt ## 3 columns: gene, accession, hmmsource - the gene names must match the NAME info in genes.hmm.gz
+kind.txt ## the database name. This WILL appear in your anvi'o outputs
+noise_cutoff_terms.txt ## this sets the evalue for the HMM searches
+reference.txt ## this is just a citation or whatever
+target.txt ## sequence type e.g. AA:GENE
+```
+* Have a look at bioinfdb/HMM/VOGDB created by the bioinf-setup script and copy that format
+* Each HMM db must have its own subdirectory within bioinfdb/HMM e.g. bioinfdb/HMM/VOGDB) that contains these 6 files and NOTHING ELSE. Seriously, anvi'o will not run the HMMs if it finds an unexpected file there.
+
+#### KAIJU
+* Easy! A kaiju database file is just 3 files. See [here](https://github.com/bioinformatics-centre/kaiju). Also:
+```shell
+conda activate bioinftools
+kaiju-makedb -h
+## OR
+bash bioinf/bioinf-setup.sh -h ## see STEP B2 for kaiju makedb
+```
+* Kaiju can build predetermined databses OR build from sequences provided by the user: [here](https://github.com/bioinformatics-centre/kaiju)
+* Each kaiju db must have its own subdirectory within bioinfdb/KAIJU e.g. bioinfdb/KAIJU/rvdb) that contains these 3 files:
+```shell
+names.dmp
+nodes.dmp
+<database_name>.fmi
+```
+
+#### VOGDB
+* Unless you want to work with the viral gene info in this database, you should just ignore this database
