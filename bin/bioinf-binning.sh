@@ -24,6 +24,7 @@ echo -e "\tSUBMIT TO SLURM (see README for more info): ${cyan}sbatch --time=96:0
 echo -e "\tSUBMIT TO SLURM, running only steps A1 to A3, and without mapping: ${cyan}sbatch --time=96:00:00 --cpus-per-task=24 --mem=240GB --partition long -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-binning.sh -i /path/to/samplelistfile -p project_name -s A1_A2_A3 -n${nocolor}"
 echo -e "\tRUN LOCALLY (not recommended): ${cyan}bioinf-binning.sh -i /path/to/samplelistfile -p project_name --threads 24${nocolor}"
 echo -e "\n-c, --clean\tdelete all intermediate files that are not needed to continue with the binning\n"
+echo -e "\n-C, --concoct\trun auto binning with CONCOCT. Requires concoct setup through anvi'o as detailed in anvi'o installation\n"
 echo -e "-t, --threads\tnumber of threads for job (SLURM --cpus-per-task does the same thing); default 1\n"
 echo -e "-h, --help\tshow this help message and exit"
 }
@@ -31,9 +32,10 @@ echo -e "-h, --help\tshow this help message and exit"
 ### set euclidean options to default setting here
 nomap="false"
 clean="false"
+concoct="false"
 ##
 
-while getopts i:p:s:m:S:nct:h option
+while getopts i:p:s:m:S:ncCt:h option
 do 
     case "${option}" in
         i)input=${OPTARG};;
@@ -44,6 +46,7 @@ do
         S)splitlength=${OPTARG};;
         n)nomap="true";;
         c)clean="true";;
+        C)concoct="true";;
         t)threads=${OPTARG};;
         h)Help; exit;;
     esac
@@ -243,9 +246,9 @@ anvi-get-sequences-for-gene-calls -c ${project}.db -o ${project}_gene_calls.fa
 
 ### run kaiju for all kaiju databases in the bioinfdb
 for f in "$bioinfdb"/KAIJU/*; do
-    kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i ${project}_gene_calls.fa -o ${project}_gene_calls.$(basename $f) -z $THREADS -v
-    sort -t $'\t' -V -k 2,2 ${project}_gene_calls.$(basename $f) -o ${project}_gene_calls.$(basename $f)
-    kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i ${project}_gene_calls.$(basename $f) -o ${project}_gene_calls.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
+    kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i ${project}_gene_calls.fa -o ${project}_gene_calls.kaiju.$(basename $f) -z $THREADS -v
+    sort -t $'\t' -V -k 2,2 ${project}_gene_calls.kaiju.$(basename $f) -o ${project}_gene_calls.kaiju.$(basename $f)
+    kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i ${project}_gene_calls.kaiju.$(basename $f) -o ${project}_gene_calls.kaiju.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
 done
 
 #### cat all the kaiju hits together, sort by gene call name and then kaiju score in reverse order and keep the first line for each gene, i.e. the hit with the highest score. Kaiju seems to have similar scores even with different database sizes
@@ -261,6 +264,8 @@ fi
 ###### STEP-A6 - mapping reads vs contigs to create bam files [nomap=skip]
 if [[ -z "${step}" ]] || [[ "$step" =~ "A6" ]] && [[ "$nomap" == "false" ]]; then
 cd $OUTDIR
+rm -fr MAPPING-${project}
+mkdir MAPPING-${project}
 
 #### make BAM file of mapping reads vs contigs and sort and index it
 ### the same concatenate contig fasta must be used for all read files
@@ -269,8 +274,8 @@ for SETS in $(cat $input)
 do
     READS=$(echo $SETS | cut -d ";" -f 2)
     PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
-    minimap2 -t $THREADS -ax map-ont ${project}.fa $READS | samtools sort -O BAM - > ${PROFILENAME}.bam
-    samtools index -@ $THREADS -b ${PROFILENAME}.bam
+    minimap2 -t $THREADS -ax map-ont ${project}.fa $READS | samtools sort -O BAM - > MAPPING-${project}/${PROFILENAME}.bam
+    samtools index -@ $THREADS -b MAPPING-${project}/${PROFILENAME}.bam
 done
 
 ##############################################################
@@ -289,12 +294,12 @@ for SETS in $(cat $input)
 do
     PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
     if [[ "$nomap" == "false" ]]; then
-        anvi-profile -i ${PROFILENAME}.bam -c ${project}.db -o profile_${PROFILENAME} -S "${PROFILENAME}" --min-coverage-for-variability 10 -T $THREADS -M $mincontigsize -W
+        anvi-profile -i MAPPING-${project}/${PROFILENAME}.bam -c ${project}.db -o profile_${PROFILENAME} -S "${PROFILENAME}" --min-coverage-for-variability 10 -T $THREADS -M $mincontigsize -W
     fi
 
 ####### with NO mapping
     if [[ "$nomap" == "true" ]]; then
-        anvi-profile -i ${PROFILENAME}.bam -c ${project}.db -o profile_${PROFILENAME} -S "${PROFILENAME}" --min-coverage-for-variability 10 -T $THREADS -M $mincontigsize -W --blank-profile
+        anvi-profile -i MAPPING-${project}/${PROFILENAME}.bam -c ${project}.db -o profile_${PROFILENAME} -S "${PROFILENAME}" --min-coverage-for-variability 10 -T $THREADS -M $mincontigsize -W --blank-profile
     fi
 
 done
@@ -397,6 +402,29 @@ echo -e "\n##############\nAfter anvi-summarize is run, you can optionally refin
 echo -e "\n###########\nTo add additional info to the layers, visible in the layer plots: !!! \ncreate a tsv file e.g.:\nsamples density varroa_per_100_bees\nSU_TX_22_6083   0.0000000935    1.333333333\nSU_TX_22_6084   0.0000000935    6.333333333\nEQ_TX_22_5997   0.000000194     0\n\nthen do\nanvi-import-misc-data ${project}-additional_info.txt -p ${a} --target-data-table layers\n" >> BINNING_GUIDE_${project}
 
 echo -e "\n###########\nTo reorder the layers: !!!\n create a tsv file with the data name, type, and sample names listed in the desired order e.g.:\nitem_name   data_type   data_value\nphylogeny   newick  (c2:0.0370199,(c1:0.0227268,c3:0.0227268)Int3:0.0370199)\ndensity   basic   c3,c2,c1\n\nthen do\nanvi-import-misc-data ${OUTDIR}/${project}-layer_orders.txt -p ${a} --target-data-table layer_orders\n" >> BINNING_GUIDE_${project}
+
+##############################################################
+fi
+##############################################################
+
+##############################################################
+###### STEP-B1 - cluster the contigs using concoct - essentially automatic binning
+##############################################################
+if ([[ -z "${step}" ]] || [[ "$step" =~ "B1" ]]) && [[ "$concoct" == "true" ]]; then
+cd $OUTDIR
+
+if [[ "$nomap" == "false" ]]; then
+    mergedfile="profile_${project}-MERGED/PROFILE.db"
+        if [[ -f "$mergedfile" ]]; then
+            anvi-cluster-contigs -p profile_${project}-MERGED/PROFILE.db -c ${project}.db -C concoct --driver concoct
+        fi
+fi
+
+    if [[ "$nomap" == "true" ]]; then
+        anvi-cluster-contigs -p profile_${PROFILENAME}/PROFILE.db -c ${project}.db -C concoct --driver concoct
+    fi
+
+
 
 ##############################################################
 fi

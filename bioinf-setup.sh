@@ -9,7 +9,7 @@ Help()
 echo -e "${red}This script is for preparing all of the databases and variables needed to run the bioinf pipelines. FOLLOW the guide to use this script in the README.md OR at https://github.com/dmckeow/bioinf${nocolor}"
 echo -e "\n${cyan}REQUIRED PARAMETERS${nocolor}"
 echo -e "${green}This script will setup the databases needed for the all of the Schroeder lab scripts and pipelines. Run this script from the directory in which it is found${nocolor}"
-echo -e "${red}NOTE 1 - some of the databases generated are quite large - currently around 200 GB for the kaiju databases. If someone in your group has already ran this full script, then you could save space and time by simply running this script with the --shared option${nocolor}"
+echo -e "${red}NOTE 1 - some of the databases generated are quite large - currently around 200 GB for the kaiju databases. If someone in your group has already ran this full script, then you could save space and time by simply running this script with the --existing option${nocolor}"
 echo -e "${green}NOTE 2 - Similarly, if you want to update your system's paths to your own scripts and databases, without re-downloading or setting up anything, simply run Step A1 of this script on its own - e.g. -s A1 ${nocolor}"
 echo -e "-t --tmp\tThe absolute path to a temporary large storage folder - ${cyan} a folder named after your username will be made there${nocolor}"
 echo -e "-d --db\tThe absolute path to where you want your bioinf db setup - a ${cyan}folder named bioinfdb will be made there${nocolor}. Best not to put the database in the bioinf folder"
@@ -17,23 +17,23 @@ echo -e "\n${cyan}OPTIONAL PARAMETERS${nocolor}"
 echo -e "\n-s --step\t Which script steps to run. If blank, whole script is run. You can run multiple specific steps - e.g. A1_A2_A6 will only run steps A1, A2 and A6"
 echo -e "\t${green}STEPS AVAILABLE: ${nocolor}"
 awk '/^###### STEP-/ {print "\t\t"$0}' bioinf-setup.sh
-echo -e "-S --shared\t The absolute path to a previously setup bioinf db directory e.g. /home/BIOINFDB - with this option provided, the script will make soft links to all the database files found within the pre-existing shared bioinf setup, and link your setup to them. Doing this avoids having to re-download and rebuild databases that might already exist within your system or computing group"
+echo -e "-E --existing\t The absolute path to a previously setup bioinf db directory e.g. /home/BIOINFDB - with this option provided, the script will make soft links to all the database files found within the pre-existing shared bioinf setup, and link your setup to them. Doing this avoids having to re-download and rebuild databases that might already exist within your system or computing group"
 echo -e "-D --dmnd\t A protein fasta file to generate an additional custom dmnd database. Use -s B1 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
 echo -e "-k --kaiju\t Specify one of kaiju's databses to build, in addition to the defaults made by this script. Do kaiju-makedb --help to see the options (with the conda environment bioinftools active) - e.g. -k fungi . Use -s B2 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
 echo -e "-T, --threads\tnumber of threads for job (SLURM --cpus-per-task does the same thing); default 1"
 echo -e "-h, --help\tshow this help message and exit\n"
 echo -e "\nEXAMPLES FOR RUNNING SCRIPT:\n\tFRESH SETUP VIA SLURM (see README for more info):\n${cyan} sbatch --cpus-per-task=12 --time=96:00:00 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow${nocolor}"
-echo -e "\tSETUP USING A SHARED DATABASE (see README for more info):\n${cyan} bash bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -S /home/shared/bioinfdb${nocolor}"
+echo -e "\tSETUP USING A SHARED DATABASE (see README for more info):\n${cyan} bash bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -S /home/existing/bioinfdb${nocolor}"
 echo -e "\tUPDATE ONLY THE ENVIRONMENTAL VARIABLES WITHOUT CHANGING ANYTHING ELSE (see README for more info):\n${cyan} bash bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -s A1${nocolor}"
 }
 
-while getopts t:d:s:S:D:k:T:h option
+while getopts t:d:s:E:D:k:T:h option
 do 
     case "${option}" in
         s)step=${OPTARG};;
         t)tmp=${OPTARG};;
         d)db=${OPTARG};;
-        S)shared=${OPTARG};;
+        E)existing=${OPTARG};;
         D)dmnd=${OPTARG};;
         k)kaiju=${OPTARG};;
         T)threads=${OPTARG};;
@@ -52,7 +52,7 @@ if [[ -z "${db}" ]]; then echo -e "${red}-d, --db REQUIRED. You must provide the
 BIOINFDB="${db}/bioinfdb"
 BIOINFTMP="${tmp}/${USER}"
 
-if [[ ! -z "${shared}" ]]; then step="A1_A2"; echo -e "${cyan}Running with --shared option: creating symbolic links to all files/folders from origin: ${shared} to destination: ${BIOINFDB}${nocolor}"; fi
+if [[ ! -z "${existing}" ]]; then step="A1_A2"; echo -e "${cyan}Running with --existing option: creating symbolic links to all files/folders from origin: ${existing} to destination: ${BIOINFDB}${nocolor}"; fi
 
 
 ### THREADS
@@ -117,13 +117,13 @@ echo -e "${cyan}The bioinf scripts are now in your PATH: type bioinf- and tap TA
 fi
 ######################################################################
 
-###### STEP-A2: create links to a pre-existing shared database setup for bioinf
+###### STEP-A2: create links to a pre-existing existing database setup for bioinf
 ######################################################################
-if ([[ -z "${step}" ]] || [[ "$step" =~ "A2" ]]) && [[ ! -z "${shared}" ]]; then
+if ([[ -z "${step}" ]] || [[ "$step" =~ "A2" ]]) && [[ ! -z "${existing}" ]]; then
 ######################################################################
 
 ### make the same directories in pre-existing shared database
-cd "$shared"
+cd "$existing"
 find * -type d > "$BIOINFDB"/tmp.dirlist
 
 cd "$BIOINFDB"
@@ -131,9 +131,9 @@ for f in $(cat "$BIOINFDB"/tmp.dirlist); do
     mkdir -p $f
 done
 
-### create symlinks for all FILES within shared database
-cd "$shared"
-find $shared -type f > "$BIOINFDB"/tmp.filelist1
+### create symlinks for all FILES within existing database
+cd "$existing"
+find $existing -type f > "$BIOINFDB"/tmp.filelist1
 find * -type f > "$BIOINFDB"/tmp.filelist2
 paste "$BIOINFDB"/tmp.filelist1 "$BIOINFDB"/tmp.filelist2 > "$BIOINFDB"/tmp.filelist3
 

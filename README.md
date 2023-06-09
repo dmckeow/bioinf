@@ -25,7 +25,7 @@ conda create -y --name bioinftools python=3.6
 ```shell
 conda activate bioinftools ## your conda environment must be active to use it
 
-conda install -y -c bioconda kaiju
+conda install -y -c bioconda kaiju=1.9.2
 conda install -y -c bioconda seqkit
 conda install -y -c bioconda hyphy
 conda install -y -c bioconda minimap2
@@ -65,7 +65,7 @@ source ~/.bashrc ## OR logout and log back in
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
 cd bioinf
-bash bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory -S /path/to/shared/bioinfdb ## replace with your actual paths
+bash bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory -E /path/to/existing/bioinfdb ## replace with your actual paths
 source ~/.bashrc ## OR logout and log back in
 ```
 * Temporary storage is specified because some scripts such as bioinf-assembly-canu.sh will generate quite large temporary files - so you should choose somewhere with enough capacity to handle 10s to 100s of GB of data. If you are on a SLURM cluster, use the scratch directory!
