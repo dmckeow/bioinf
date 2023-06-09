@@ -252,9 +252,9 @@ for f in "$bioinfdb"/KAIJU/*; do
 done
 
 #### cat all the kaiju hits together, sort by gene call name and then kaiju score in reverse order and keep the first line for each gene, i.e. the hit with the highest score. Kaiju seems to have similar scores even with different database sizes
-awk '{print $0"\t0\tNA\tNA\tNA\tNA"}' ${project}_gene_calls.kaiju*.names | cut -f 1-8 | sort -t $'\t' -k 2,2V -k 4,4nr | awk -F "\t" '!a[$2]++' | sed 's/0\tNA\tNA\tNA\tNA//g' > ${project}.kaijumerge
+awk '{print $0"\t0\tNA\tNA\tNA\tNA"}' ${project}_gene_calls.kaiju.*.names | cut -f 1-8 | sort -t $'\t' -k 2,2V -k 4,4nr | awk -F "\t" '!a[$2]++' | sed 's/0\tNA\tNA\tNA\tNA//g' > ${project}.kaiju.merge
 
-anvi-import-taxonomy-for-genes -c ${project}.db -i ${project}.kaijumerge -p kaiju --just-do-it
+anvi-import-taxonomy-for-genes -c ${project}.db -i ${project}.kaiju.merge -p kaiju --just-do-it
 
 ##############################################################
 fi
