@@ -273,6 +273,14 @@ echo -e "PROCESS SUMMARY:\n1) Pre-processing the reads? $REA\n2) Correcting the 
 
 
 cp ${TMPDIR}/canu.out ${OUTDIR}/${project}.canu.out
+cp ${TMPDIR}/${project}.correctedReads.fasta.gz ${OUTDIR}/
+cp ${TMPDIR}/${project}.trimmedReads.fasta.gz ${OUTDIR}/
+cp ${TMPDIR}/${project}.report ${OUTDIR}/
+cp ${TMPDIR}/${project}.contigs.layout.tigInfo ${OUTDIR}/
+cp ${TMPDIR}/${project}.contigs.layout.readToTig ${OUTDIR}/
+cp ${TMPDIR}/${project}.unassembled.fasta ${OUTDIR}/
+cp ${TMPDIR}/${project}.contigs.fasta ${OUTDIR}/
+cp ${TMPDIR}/${project}.bctrimmedreads.fastq.gz ${OUTDIR}/
 
 
 seqkit seq --min-len 200 --min-qual 9 ${TMPDIR}/${project}.bctrimmedreads.fastq.gz > ${OUTDIR}/${project}.MinLen200-minQ9.fastq

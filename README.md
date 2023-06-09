@@ -44,13 +44,13 @@ conda install -c bioconda "pychopper>=2.0"
 
 
 ## INSTALLATION STEP 3 - download and setup bioinf pipelines, scripts, and databases
-
+`CHOOSE BETWEEN 3a. 3b. or 3c. :`
 ### 3a. For a fresh setup
 * If you are creating a fresh setup for bioinf, copy the following, but replace /path/to/temporary_directory with your system's path to the temporary_directory storage:
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
 cd bioinf
-sbatch --cpus-per-task=24 --time=96:00:00 --mem=240GB --partition your_partition -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/create/database/within
+sbatch --cpus-per-task=24 --time=96:00:00 --mem=240GB --partition your_partition -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory
 ```
 * The setup will now run, and it will probably take overnight to complete, because it is building some large databases such as nr for Kaiju. Once it is finished, do:
 ```shell
@@ -65,19 +65,20 @@ source ~/.bashrc ## OR logout and log back in
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
 cd bioinf
-bash bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/create/database/within -S /path/to/shared/bioinfdb ## replace with your actual paths
+bash bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory -S /path/to/shared/bioinfdb ## replace with your actual paths
 source ~/.bashrc ## OR logout and log back in
 ```
 * Temporary storage is specified because some scripts such as bioinf-assembly-canu.sh will generate quite large temporary files - so you should choose somewhere with enough capacity to handle 10s to 100s of GB of data. If you are on a SLURM cluster, use the scratch directory!
 * This version of the setup process can be run locally, so we just use "bash" to run it - no SLURM sbatch required
 
-### 3c. To update only the locations of the databases and script files, i.e. if you just want to reconnect your copy of bioinf with your own bioinfdb
+### 3c. IF you already have your own personal bioinfdb setup and just need to update the locations of the databases and script files
 * This is useful if you need to change the location of your bioinf, bioinfdb, or bioinftmp
-* Intended for a user to connect to their own database
+* Intended for a user to re-connect to their own database
+* BEWARE: if you leave out -s A1, then a fresh setup will begin and your existing db will get deleted
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
 cd bioinf
-bash bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/directory/containing/bioinfdb  ## replace with your actual paths
+bash bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/directory/containing/your/bioinfdb -s A1 ## replace with your actual paths
 source ~/.bashrc ## OR logout and log back in
 ```
 

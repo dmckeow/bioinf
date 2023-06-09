@@ -52,7 +52,7 @@ if [[ -z "${db}" ]]; then echo -e "${red}-d, --db REQUIRED. You must provide the
 BIOINFDB="${db}/bioinfdb"
 BIOINFTMP="${tmp}/${USER}"
 
-if [[ ! -z "${shared}" ]]; then step="A1_A2"; echo -e "${red}Running with --shared option: creating symbolic links to all files/folders from origin: ${shared} to destination: ${BIOINFDB}${nocolor}"; fi
+if [[ ! -z "${shared}" ]]; then step="A1_A2"; echo -e "${cyan}Running with --shared option: creating symbolic links to all files/folders from origin: ${shared} to destination: ${BIOINFDB}${nocolor}"; fi
 
 
 ### THREADS
@@ -108,7 +108,10 @@ mkdir -p "$BIOINFTMP"
 mkdir -p "$BIOINFDB"/{DMND,HMM,KAIJU,VOGDB} ### make folders for the databases
 
 echo -e "${cyan}Directory for bioinf temporary files is now: ${BIOINFTMP}${nocolor}"
-echo -e "${cyan}Directory for bioinf databases is now: ${BIOINFDB}${nocolor}"
+echo -e "${cyan}Directory for YOUR bioinf databases is now: ${BIOINFDB}${nocolor}"
+echo -e "${cyan}To see your tmp and db locations any time, do: echo \$bioinftmp OR echo \$bioinfdb${nocolor}"
+echo -e "${cyan}The bioinf scripts are now in your PATH: type bioinf- and tap TAB twice to see all scripts that are available${nocolor}"
+
 
 ######################################################################
 fi
