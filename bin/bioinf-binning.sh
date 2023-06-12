@@ -24,7 +24,7 @@ echo -e "\tSUBMIT TO SLURM (see README for more info): ${cyan}sbatch --time=96:0
 echo -e "\tSUBMIT TO SLURM, running only steps A1 to A3, and without mapping: ${cyan}sbatch --time=96:00:00 --cpus-per-task=24 --mem=240GB --partition long -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-binning.sh -i /path/to/samplelistfile -p project_name -s A1_A2_A3 -n${nocolor}"
 echo -e "\tRUN LOCALLY (not recommended): ${cyan}bioinf-binning.sh -i /path/to/samplelistfile -p project_name --threads 24${nocolor}"
 echo -e "\n-c, --clean\tdelete all intermediate files that are not needed to continue with the binning\n"
-echo -e "\n-C, --concoct\trun auto binning with CONCOCT. Requires concoct setup through anvi'o as detailed in anvi'o installation\n"
+echo -e "\n-C, --concoct\trun auto binning with CONCOCT. Requires this script be run with mapping. Requires concoct setup through anvi'o as detailed in anvi'o installation\n"
 echo -e "-t, --threads\tnumber of threads for job (SLURM --cpus-per-task does the same thing); default 1\n"
 echo -e "-h, --help\tshow this help message and exit"
 }
@@ -117,7 +117,7 @@ conda activate bioinftools
 
 ###### STEP-A1 - pre-process your contig fasta(s)
 if [[ -z "${step}" ]] || [[ "$step" =~ "A1" ]]; then
-
+echo -e "${cyan}\t\tRUNNING STEP A1${nocolor}"
 ### make output parent directories if they do not already exist
 
 dos2unix $input
@@ -157,6 +157,8 @@ fi
 
 ###### STEP-A2 - generate the contigs database
 if [[ -z "${step}" ]] || [[ "$step" =~ "A2" ]]; then
+echo -e "${cyan}\t\tRUNNING STEP A2${nocolor}"
+
 cd $OUTDIR
 
 ### generate the contigs database
@@ -176,6 +178,7 @@ fi
 
 ###### STEP-A3 - perform hmm searches vs default databases [optional]
 if [[ -z "${step}" ]] || [[ "$step" =~ "A3" ]]; then
+echo -e "${cyan}\t\tRUNNING STEP A3${nocolor}"
 
 cd $OUTDIR
 
@@ -194,6 +197,8 @@ fi
 
 ###### STEP-A4 - perform hmm searches vs custom databases, estimate taxonomy [optional]
 if [[ -z "${step}" ]] || [[ "$step" =~ "A4" ]]; then
+echo -e "${cyan}\t\tRUNNING STEP A4${nocolor}"
+
 cd $OUTDIR
 
 #### run hmm profile, summarise contig stats, and identify COGs
@@ -239,6 +244,8 @@ fi
 
 ###### STEP-A5 - get taxonomy for genes with KAIJU and import into contigs database [optional]
 if [[ -z "${step}" ]] || [[ "$step" =~ "A5" ]]; then
+echo -e "${cyan}\t\tRUNNING STEP A5${nocolor}"
+
 cd $OUTDIR
 
 ### get gene calls 
@@ -263,6 +270,8 @@ fi
 
 ###### STEP-A6 - mapping reads vs contigs to create bam files [nomap=skip]
 if [[ -z "${step}" ]] || [[ "$step" =~ "A6" ]] && [[ "$nomap" == "false" ]]; then
+    echo -e "${cyan}\t\tRUNNING STEP A6${nocolor}"
+
 cd $OUTDIR
 rm -fr MAPPING-${project}
 mkdir MAPPING-${project}
@@ -287,6 +296,8 @@ fi
 ##############################################################
 if [[ -z "${step}" ]] || [[ "$step" =~ "A7" ]]; then
 ##############################################################
+echo -e "${cyan}\t\tRUNNING STEP A7${nocolor}"
+
   cd $OUTDIR
 
 ####### with mapping
@@ -311,6 +322,8 @@ fi
 
 ###### STEP-A8 - Diamond blastx whole contigs [optional]
 if [[ -z "${step}" ]] || [[ "$step" =~ "A8" ]]; then
+    echo -e "${cyan}\t\tRUNNING STEP A8${nocolor}"
+
 cd $OUTDIR
 
 anvi-export-contigs --splits-mode -c ${project}.db -o ${project}-SPLITS.fa
@@ -365,7 +378,13 @@ fi
 ##############################################################
 
 if [[ -z "${step}" ]] || [[ "$step" =~ "A9" ]]; then
+    echo -e "${cyan}\t\tRUNNING STEP A9${nocolor}"
+
 cd $OUTDIR
+
+### import a collection that is just all splits in a single meaningless bin (this allows us to summarize a nomap project that is too big to opened - we can then filter the anvi-summarise results and select a contig subset based on HMM hits etc to create smaller anvio projects that maybe we can actually open)
+anvi-export-contigs --splits-mode -c ${project}.db -o ${project}-SPLITS.fa
+grep ">" ${project}-SPLITS.fa | sed -E 's/>(.*)/\1\tBin_1/g' > ${project}-SPLITS-COLLECTION-ALL
 
     if [[ "$nomap" == "false" ]]; then
 
@@ -378,16 +397,25 @@ cd $OUTDIR
             mergedfile="profile_${project}-MERGED/PROFILE.db"
             if [[ -f "$mergedfile" ]]; then
                 for f in *.evalue_*.dmnd.blastx.txt; do
-                 anvi-import-misc-data -p profile_${project}-MERGED/PROFILE.db --target-data-table items --just-do-it ${f}
+                    anvi-import-misc-data -p profile_${project}-MERGED/PROFILE.db --target-data-table items --just-do-it ${f}
                 done
+
+                anvi-import-collection -C SPLITS_COLLECTION_ALL -p profile_${project}-MERGED/PROFILE.db -c ${project}.db ${project}-SPLITS-COLLECTION-ALL
             fi
 
     fi
 
 
     if [[ "$nomap" == "true" ]]; then
-        a="${OUTDIR}/profile_${PROFILENAME}/PROFILE.db"
+        for SETS in $(cat $input)
+            do
+                PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
+                a="${OUTDIR}/profile_${PROFILENAME}/PROFILE.db"
+                anvi-import-collection -C SPLITS_COLLECTION_ALL -p ${OUTDIR}/profile_${PROFILENAME}/PROFILE.db -c ${project}.db ${project}-SPLITS-COLLECTION-ALL
+
+            done
     fi
+
 
 #### prepare command for interactive interface and visualise
 ### NOT for job submission or batch; interactive only
@@ -408,23 +436,18 @@ fi
 ##############################################################
 
 ##############################################################
-###### STEP-B1 - cluster the contigs using concoct - essentially automatic binning
+###### STEP-B1 - cluster the contigs using concoct - essentially automatic binning [nomap=skip]
 ##############################################################
 if ([[ -z "${step}" ]] || [[ "$step" =~ "B1" ]]) && [[ "$concoct" == "true" ]]; then
+        echo -e "${cyan}\t\tRUNNING STEP B1${nocolor}"
 cd $OUTDIR
 
 if [[ "$nomap" == "false" ]]; then
     mergedfile="profile_${project}-MERGED/PROFILE.db"
         if [[ -f "$mergedfile" ]]; then
-            anvi-cluster-contigs -p profile_${project}-MERGED/PROFILE.db -c ${project}.db -C concoct --driver concoct
+            anvi-cluster-contigs -p profile_${project}-MERGED/PROFILE.db -c ${project}.db -C concoct --driver concoct --just-do-it
         fi
 fi
-
-    if [[ "$nomap" == "true" ]]; then
-        anvi-cluster-contigs -p profile_${PROFILENAME}/PROFILE.db -c ${project}.db -C concoct --driver concoct
-    fi
-
-
 
 ##############################################################
 fi
@@ -459,7 +482,7 @@ if [[ "$clean" == "true" ]]; then
 cd $OUTDIR
 
 rm -f *.evalue_*.dmnd.blastx*
-rm -f *.bai *.bam
+rm -f MAPPING-*
 rm -fr ${project}_*-annot
 
 
