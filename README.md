@@ -49,8 +49,8 @@ conda install -c bioconda "pychopper>=2.0"
 * If you are creating a fresh setup for bioinf, copy the following, but replace /path/to/temporary_directory with your system's path to the temporary_directory storage:
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
-cd bioinf
-sbatch --cpus-per-task=24 --time=96:00:00 --mem=240GB --partition your_partition -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory
+chmod +x bioinf/bin/*
+sbatch --cpus-per-task=24 --time=96:00:00 --mem=240GB --partition your_partition -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf/bin/bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory
 ```
 * The setup will now run, and it will probably take overnight to complete, because it is building some large databases such as nr for Kaiju. Once it is finished, do:
 ```shell
@@ -64,12 +64,12 @@ source ~/.bashrc ## OR logout and log back in
 * Copy the following code, but with your own paths:
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
-cd bioinf
-bash bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory -E /path/to/existing/bioinfdb ## replace with your actual paths
+chmod +x bioinf/bin/*
+bioinf/bin/bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory -E /path/to/existing/bioinfdb ## replace with your actual paths - if bioinf is already setup (step A1 ahs put it on your PATH), then you can do bioinf-setup.sh instead of bioinf/bin/bioinf-setup.sh
 source ~/.bashrc ## OR logout and log back in
 ```
 * Temporary storage is specified because some scripts such as bioinf-assembly-canu.sh will generate quite large temporary files - so you should choose somewhere with enough capacity to handle 10s to 100s of GB of data. If you are on a SLURM cluster, use the scratch directory!
-* This version of the setup process can be run locally, so we just use "bash" to run it - no SLURM sbatch required
+* This version of the setup process can be run locally - no SLURM sbatch required
 
 ### 3c. IF you already have your own personal bioinfdb setup and just need to update the locations of the databases and script files
 * This is useful if you need to change the location of your bioinf, bioinfdb, or bioinftmp
@@ -77,8 +77,8 @@ source ~/.bashrc ## OR logout and log back in
 * BEWARE: if you leave out -s A1, then a fresh setup will begin and your existing db will get deleted
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
-cd bioinf
-bash bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/directory/containing/your/bioinfdb -s A1 ## replace with your actual paths
+chmod +x bioinf/bin/*
+bioinf/bin/bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/directory/containing/your/bioinfdb -s A1 ## replace with your actual paths
 source ~/.bashrc ## OR logout and log back in
 ```
 
@@ -200,7 +200,9 @@ bioinfdb
 conda activate bioinftools
 diamond makedb -h
 ## OR
-bash bioinf/bioinf-setup.sh -h ## see STEP B1 for diamond makedb
+bioinf-setup.sh -h ## see STEP B1 for diamond makedb e.g.:
+
+sbatch --cpus-per-task=12 --time=96:00:00 --mem=64GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -s B1 --dmnd /path/to/protein.fasta
 ```
 #### HMM
 * Annoying! Unfortunately, anvi'o requires a specific and stupid set of 6 files to run a custom HMM as detailed [here](https://merenlab.org/2016/05/21/archaeal-single-copy-genes/):
@@ -221,7 +223,9 @@ target.txt ## sequence type e.g. AA:GENE
 conda activate bioinftools
 kaiju-makedb -h
 ## OR
-bash bioinf/bioinf-setup.sh -h ## see STEP B2 for kaiju makedb
+bioinf-setup.sh -h ## see STEP B2 for kaiju makedb e.g.:
+
+sbatch --cpus-per-task=12 --time=96:00:00 --mem=64GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -s B1 --kaiju fungi
 ```
 * Kaiju can build predetermined databses OR build from sequences provided by the user: [here](https://github.com/bioinformatics-centre/kaiju)
 * Each kaiju db must have its own subdirectory within bioinfdb/KAIJU e.g. bioinfdb/KAIJU/rvdb) that contains these 3 files:

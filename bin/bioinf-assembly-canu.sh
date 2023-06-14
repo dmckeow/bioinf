@@ -254,6 +254,18 @@ rm -fr ${OUTDIR}/${project}.MinLen200-minQ9.fastq
 
 rm -fr ${TMPDIR}
 
+#### create file that shows which reads got assembled
+zcat ${OUTDIR}/${project}.correctedReads.fasta.gz | grep ">" | sed -E 's/>(.+) id=(.+)/\1\t\2/g' | awk '{print "s/^"$2"$/"$1"/g"}' > ${OUTDIR}/canuid-origid.tmp
+       
+cut -f 1 ${OUTDIR}/${project}.contigs.layout.readToTig | sed -f ${OUTDIR}/canuid-origid.tmp - \
+| paste - ${OUTDIR}/${project}.contigs.layout.readToTig | cut -f 1,3 | sed '1,1d' > ${OUTDIR}/origid-canutigid.tmp
+
+grep ">" ${OUTDIR}/${project}.contigs.fasta | sed -E 's/>tig([0-9]+).*/\1/g' | sed -E 's/^0+//g' | grep -w -f - ${OUTDIR}/origid-canutigid.tmp > ${OUTDIR}/origid-canutigid-assembled.tmp
+
+grep ">" ${OUTDIR}/${project}.contigs.fasta | sed -E 's/>tig([0-9]+).*/\1/g' | sed -E 's/^(0+)([1-9]+[0-9]*)/\2\ttig\1\2/g' | awk '{print "s/\\t"$1"$/\\t"$2"/g"}' | sed -f - ${OUTDIR}/origid-canutigid-assembled.tmp > ${OUTDIR}/${project}.contigs.layout.readToTig.assembledonly.origNames
+
+rm -f *.tmp
+
 exit
 fi
 
