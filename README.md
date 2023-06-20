@@ -32,7 +32,6 @@ conda install -y -c bioconda minimap2
 conda install -y -c bioconda porechop
 conda install -y -c conda-forge pigz
 conda install -y -c bioconda taxonkit
-conda install -y -c bioconda canu
 conda install -y -c bioconda mafft
 
 ### packages for isONcorrect:
@@ -42,6 +41,15 @@ pip install isONclust
 conda install -c bioconda "pychopper>=2.0"
 ```
 
+* Sadly, installing canu through conda is not really supported - so install the assembler CANU version 2.2 from https://github.com/marbl/canu by `downloading a binary release as detailed in the CANU git`
+* Once it is installed you must add canu to your path as follows:
+```shell
+sed -i -z "s|$|\nexport PATH=\"path\/to\/your\/canu-2.2\/bin:\$PATH\"\n|g" $HOME/.bashrc ## replace path\/to\/your\/ with your actual path - you MUST use \/ instead of / in your path
+source $HOME/.bashrc
+canu --help ## if you see canu's help message then you are good to go
+```
+* Alternatively, you can add canu to your path by just copy pasting `export PATH="path/to/your/canu-2.2/bin:$PATH"` into your ~/.bashrc using an editor like vim or nano, save the file changes and then do `source ~/.bashrc`
+* If this isn't working you can also install canu using conda, but is more likely to not work than the binary install
 
 ## INSTALLATION STEP 3 - download and setup bioinf pipelines, scripts, and databases
 `CHOOSE BETWEEN 3a. 3b. or 3c. :`

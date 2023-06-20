@@ -420,12 +420,13 @@ grep ">" ${project}-SPLITS.fa | sed -E 's/>(.*)/\1\tBin_1/g' > ${project}-SPLITS
 #### prepare command for interactive interface and visualise
 ### NOT for job submission or batch; interactive only
 ## this generates a file that can be copy pasted from or use bash command on to run visualisation step in terminal
-echo -e "\n##### To run your interactive interface !!! \n#######\n${green}conda activate bioinftools\n##############\n\nanvi-interactive -p ${a} -c ${OUTDIR}/${project}.db --browser-path /usr/bin/chromium-browser${nocolor}\n\n !!! OR (for much better performance) !!!\n\nIF logged in with:\nssh -L 8080:localhost:8080\ndo\n${green}anvi-interactive -p ${a} -c ${OUTDIR}/${project}.db --server-only${nocolor}" > BINNING_GUIDE_${project}
+echo -e "\n##### To run your interactive interface !!! \n#######\n${cyan}conda activate bioinftools\n##############${nocolor}\nIF logged in with:\nssh -L 8080:localhost:8080\ndo\n${cyan}anvi-interactive -p ${a} -c ${OUTDIR}/${project}.db --server-only --ip-address 127.0.0.1 --port-number 8080\n\t and then copy paste the server address that anvio shows into your browser (use chrome), e.g.: http://127.0.0.1:8080${nocolor}" > BINNING_GUIDE_${project}
+
+echo -e "\n##### OR to run the interactive interface through your local system (performance can be MUCH worse this way - also specify the path to your browser if needed): ##############\n\n${cyan}anvi-interactive -p ${a} -c ${OUTDIR}/${project}.db --browser-path /usr/bin/chromium-browser${nocolor}\n" >> BINNING_GUIDE_${project}
 
 echo -e "\n##############\nAfter MANUAL binning done, save bins as collection (named manual in this example) via interactive interface, then do:\n\n${green}anvi-summarize -p ${a} -c ${OUTDIR}/${project}.db -o ${OUTDIR}/${project}-SUMMARY -C manual${nocolor}\n" >> BINNING_GUIDE_${project}
 
 echo -e "\n##############\nAfter anvi-summarize is run, you can optionally refine individual bins. Note which bins need refined (i.e. which bins are contaminated?), then for each bad bin, do:\n${green}anvi-refine -p ${a} -c ${OUTDIR}/${project}.db --browser-path /usr/bin/chromium-browser -C manual -b [BIN_NAME]${nocolor}" >> BINNING_GUIDE_${project}
-
 
 echo -e "\n###########\nTo add additional info to the layers, visible in the layer plots: !!! \ncreate a tsv file e.g.:\nsamples density varroa_per_100_bees\nSU_TX_22_6083   0.0000000935    1.333333333\nSU_TX_22_6084   0.0000000935    6.333333333\nEQ_TX_22_5997   0.000000194     0\n\nthen do\nanvi-import-misc-data ${project}-additional_info.txt -p ${a} --target-data-table layers\n" >> BINNING_GUIDE_${project}
 

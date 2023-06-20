@@ -210,7 +210,7 @@ pigz -f -p $THREADS genes.hmm
 
 zcat genes.hmm.gz | awk '/^NAME *VOG[0-9]+/' | sed -E 's/^NAME +//g' | sort -Vu | awk '{print $0"\tnone""\tVOGDB"}' | sed -z 's/^/gene\taccession\thmmsource\n/1' > genes.txt
 
-echo -e "-E 1e-20" > noise_cutoff_terms.txt
+echo -e "-E 1e-10" > noise_cutoff_terms.txt
 echo -e "VOGDB" > kind.txt
 echo "https://vogdb.org/" > reference.txt
 echo -e "AA:GENE" > target.txt
