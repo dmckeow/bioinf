@@ -1,10 +1,4 @@
 #!/bin/bash
-#SBATCH --time=24:00:00
-#SBATCH --cpus-per-task=12
-#SBATCH --mem=120GB
-#SBATCH --partition ag2tb
-#SBATCH -o slurm.%N.%j.out
-#SBATCH -e slurm.%N.%j.err
 
 echo -e "COMMAND LINE JOB SUBMISSSION:\n\tsbatch /home/dcschroe/dmckeow/projects/DWV/script/postbin_contigcheck.sh $@"
 
@@ -82,22 +76,14 @@ tmp="tmp.${O_N}"
 
 ####################### SOFTWARE, DATABSES, ETC #####################################
 ### LOAD software available via shared environment on server:
-module purge
 eval "$(conda shell.bash hook)"
-
-CUSTOM_DMND="/panfs/jay/groups/27/dcschroe/dmckeow/custom_DMND"
+conda activate bioinftools
 
 ########################################################################
 ########################################################################
 
-######### SOFTWARE/OTHER SCRIPTS THAT NEED SETUP BEFORE RUNNING:
-seqkit="/home/dcschroe/dmckeow/seqkit"
 
-##### Diamond - installed locally
-DIAMOND="/panfs/jay/groups/27/dcschroe/shared/tools/diamond"
 
-##### NCBI DIRECT ENTREZ TOOLS
-EDIRECT="/home/dcschroe/dmckeow/edirect"
 
 ######################################################################
 #################VOGDB#####################################################
@@ -109,13 +95,12 @@ cd ${output}/ANVIO_${prefix}/${prefix}-SUMMARY/bin_by_bin/${bin}
 ##### fix the bin contig file if anvio fucked it up by literally splitting the contigs up (it does this for binning without mapping for some reason!)
 if grep -q partial_[0-9]*_[0-9]* "${bin}-contigs.fa"; then
     sed -E 's/(.+)_split.+/\1/' ${bin}-original_split_names.txt | sort -Vu > ${tmp}.000
-    $seqkit grep -n -f ${tmp}.000 ${output}/ANVIO_${prefix}/${prefix}.fa > ${bin}-contigs.fa
+    seqkit grep -n -f ${tmp}.000 ${output}/ANVIO_${prefix}/${prefix}.fa > ${bin}-contigs.fa
 fi
 
 ########################################## STEP A1 - prepare mapping pltos for the contigs within the bin
 if [[ "$step" =~ "A0" ]] || [[ "$step" =~ "A1" ]]; then
 ###########################################
-module purge; conda deactivate
   
 
 rm -f tmp.*${O_N}*
@@ -129,14 +114,10 @@ grep -w -f tmp.${O_N}.0 $input > tmp.${O_N}.1
 
 ########### sample chromosome loci depth
 
-module purge; conda deactivate
-  module load minimap2/2.17
-  module load samtools
-
 
 for SETS in $(cat tmp.${O_N}.0); do
   PROFILENAME=$(echo $SETS)
-    $seqkit grep -rp contig_${PROFILENAME}_[0-9]+ ${output}/ANVIO_${prefix}/${prefix}.fa > tmp.${PROFILENAME}.${O_N}.fa
+    seqkit grep -rp contig_${PROFILENAME}_[0-9]+ ${output}/ANVIO_${prefix}/${prefix}.fa > tmp.${PROFILENAME}.${O_N}.fa
 done
 
 #### ALL contigs vs ALL reads for each sample in the bin
@@ -158,7 +139,7 @@ cat tmp.*.${O_N}.2 | grep -f tmp.${O_N}.00 - > ${O_N}_FINAL1.tsv
 for SETS in $(cat tmp.${O_N}.1); do
     PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
     READS=$(echo $SETS | cut -d ";" -f 2)
-    NO_READS=$($seqkit stat -T $READS | sed '1,1d' | cut -f 4)
+    NO_READS=$(seqkit stat -T $READS | sed '1,1d' | cut -f 4)
     realpath ${PROFILENAME}.${O_N}.bam | awk -v P="${PROFILENAME}" -v R="$NO_READS" '{print P"\t"R"\t"$0}' > tmp.${PROFILENAME}.${O_N}.3
 done
 
@@ -181,9 +162,6 @@ fi
 ########################################## STEP A2 - prepare downsampling filters for plots to test mapping
 if [[ "$step" =~ "A0" ]] || [[ "$step" =~ "A2" ]]; then
 ###########################################
-module purge; conda deactivate
-module load samtools
-module load minimap2/2.17
 
 ##### this step includes downsampling by contig size
 #### ALL contigs vs ALL reads for each sample in the bin
@@ -200,7 +178,7 @@ for i in {1..10}; do
 for SETS in $(cat tmp.${O_N}.1); do
     PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
     READS=$(echo $SETS | cut -d ";" -f 2)
-    $seqkit seq -m $LENGTH tmp.${PROFILENAME}.${O_N}.fa | minimap2 -t $SLURM_CPUS_PER_TASK -ax map-ont - $READS | samtools sort -O BAM - > tmp.${LENGTH}.${PROFILENAME}.${O_N}.bam
+    seqkit seq -m $LENGTH tmp.${PROFILENAME}.${O_N}.fa | minimap2 -t $SLURM_CPUS_PER_TASK -ax map-ont - $READS | samtools sort -O BAM - > tmp.${LENGTH}.${PROFILENAME}.${O_N}.bam
     samtools index -@ $SLURM_CPUS_PER_TASK -b tmp.${LENGTH}.${PROFILENAME}.${O_N}.bam
     samtools depth tmp.${LENGTH}.${PROFILENAME}.${O_N}.bam | awk -v P="${PROFILENAME}" -v L="${LENGTH}" '{print P"\t"$0"\t"L}' > tmp.${LENGTH}.${PROFILENAME}.${O_N}.2
 done
@@ -210,7 +188,7 @@ done
 for SETS in $(cat tmp.${O_N}.1); do
     PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
     READS=$(echo $SETS | cut -d ";" -f 2)
-    $seqkit seq -m 0 tmp.${PROFILENAME}.${O_N}.fa | minimap2 -t $SLURM_CPUS_PER_TASK -ax map-ont - $READS | samtools sort -O BAM - > tmp.0.${PROFILENAME}.${O_N}.bam
+    seqkit seq -m 0 tmp.${PROFILENAME}.${O_N}.fa | minimap2 -t $SLURM_CPUS_PER_TASK -ax map-ont - $READS | samtools sort -O BAM - > tmp.0.${PROFILENAME}.${O_N}.bam
     samtools index -@ $SLURM_CPUS_PER_TASK -b tmp.0.${PROFILENAME}.${O_N}.bam
     samtools depth tmp.0.${PROFILENAME}.${O_N}.bam | awk -v P="${PROFILENAME}" '{print P"\t"$0}' | grep -f tmp.${O_N}.00 - > tmp.0.${PROFILENAME}.${O_N}.0
     mv tmp.0.${PROFILENAME}.${O_N}.bam ${PROFILENAME}.${O_N}.bam
@@ -235,8 +213,6 @@ fi
 
 #################### STEP A4 - Diamond blastx whole contigs against VOGDB (optional) #################################
 if [[ "$step" =~ "A0" ]] || [[ "$step" =~ "A4" ]]; then
-module purge; conda deactivate
-conda activate $ANVIO
 
 tmp="tmp.${O_N}"
 rm -f ${tmp}.*
@@ -253,13 +229,13 @@ awk -F "\t" '{print "___"$1"___"}' taxonomy-per-gene.txt | sed -f ${tmp}.001 - |
 ##### get 10 random genomes within taxonomic group identified
     echo -e "${taxonomy}" | sed 's/,/\n/g' > tmp.taxonomy
     for f in $(sed '/;NA;$/d' taxonomy-per-gene.txt | grep -f tmp.taxonomy - | cut -f 3 | sort -Vu | sort -VR | head -10); do
-        ${EDIRECT}/esearch -db nuccore -query "txid${f}" | ${EDIRECT}/efetch -format fasta | $seqkit seq -j $SLURM_CPUS_PER_TASK -m $minsize -M $maxsize - | $seqkit rmdup -j $SLURM_CPUS_PER_TASK -s - | sed -E -e 's/[^>a-zA-Z0-9.]/_/g' -e 's/_+/_/g' -e 's/>/>reference_/g' > ${tmp}.${f}.003
+        esearch -db nuccore -query "txid${f}" | ${EDIRECT}/efetch -format fasta | seqkit seq -j $SLURM_CPUS_PER_TASK -m $minsize -M $maxsize - | seqkit rmdup -j $SLURM_CPUS_PER_TASK -s - | sed -E -e 's/[^>a-zA-Z0-9.]/_/g' -e 's/_+/_/g' -e 's/>/>reference_/g' > ${tmp}.${f}.003
     done
 
 
 find ${tmp}.*.003 -type f -empty -delete
 ### here the taxa specific reference genomes are randomly shuffled
-cat ${tmp}.*.003 | $seqkit shuffle > ${tmp}.006
+cat ${tmp}.*.003 | seqkit shuffle > ${tmp}.006
 
 #### without any specific keywords for genome provided, 3 random genomes are chosen, with priority for user selected taxa/genomes
 if [ ! -z "$reference" ]; then
@@ -267,16 +243,16 @@ if [ ! -z "$reference" ]; then
 
 #### get fastas for user provided genomes on NCBI
     for f in $(cat tmp.reference); do
-        ${EDIRECT}/esearch -db nuccore -query "${f}" | ${EDIRECT}/efetch -format fasta | sed -E -e 's/[^>a-zA-Z0-9.]/_/g' -e 's/_+/_/g' -e 's/>/>reference_/g'
+        esearch -db nuccore -query "${f}" | ${EDIRECT}/efetch -format fasta | sed -E -e 's/[^>a-zA-Z0-9.]/_/g' -e 's/_+/_/g' -e 's/>/>reference_/g'
     done > ${tmp}.003.ref.fa
 
-    cat ${tmp}.003.ref.fa ${tmp}.006 | $seqkit rmdup -j $SLURM_CPUS_PER_TASK -n - > ${tmp}.007
+    cat ${tmp}.003.ref.fa ${tmp}.006 | seqkit rmdup -j $SLURM_CPUS_PER_TASK -n - > ${tmp}.007
 
 #### select 3 reference genomes, with priority for user-provided ones, then followed by randomly ordered taxa specific ones
 
     grep ">" ${tmp}.007 | sed 's/>//g' | awk '!a[$0]++' > ${tmp}.003.ref
 
-head -3 ${tmp}.003.ref | $seqkit grep -n -f - ${tmp}.007 | cat - ${bin}-contigs.fa > ${tmp}.005
+head -3 ${tmp}.003.ref | seqkit grep -n -f - ${tmp}.007 | cat - ${bin}-contigs.fa > ${tmp}.005
 
 fi
 
@@ -285,15 +261,15 @@ if [ -z "$reference" ]; then
 
     rm -f ${tmp}.003.ref; touch ${tmp}.003.ref
     grep ">" ${tmp}.006 | sort -VR | sed 's/>//g' | awk '!a[$0]++' >> ${tmp}.003.ref
-    head -3 ${tmp}.003.ref | $seqkit grep -n -f - ${tmp}.006 | cat - ${bin}-contigs.fa > ${tmp}.005
+    head -3 ${tmp}.003.ref | seqkit grep -n -f - ${tmp}.006 | cat - ${bin}-contigs.fa > ${tmp}.005
 fi
 
 ### blastx whole splits against custom dmnd databases
 ### reduce to best hit per contig and VOG hit only (by evalue)
 ### set the max target sequences based on the longest contig, divided by 100 (at the shorter end of genes)
-MAXTARGETS=$($seqkit stat -T ${tmp}.005 | sed '1,1d' | awk -F "\t" '{printf "%0.0f\n", $8/100}')
+MAXTARGETS=$(seqkit stat -T ${tmp}.005 | sed '1,1d' | awk -F "\t" '{printf "%0.0f\n", $8/100}')
 
-$DIAMOND blastx --max-target-seqs $MAXTARGETS --evalue 1e-120 --sensitive -p $SLURM_CPUS_PER_TASK -d ${CUSTOM_DMND}/vog.dmnd -q ${tmp}.005 -f 6 -o contigs-refs.dmnd.blastx
+diamond blastx --max-target-seqs $MAXTARGETS --evalue 1e-120 --sensitive -p $SLURM_CPUS_PER_TASK -d $bioinfdb/DMND/vog.dmnd -q ${tmp}.005 -f 6 -o contigs-refs.dmnd.blastx
 
 awk -F"\t" 'BEGIN{OFS="\t"};{gsub(/\..*/,"",$2)}1' contigs-refs.dmnd.blastx | awk -F "\t" '!a[$1,$2]++' | cut -f 1,2,4,12 > ${tmp}.004
 
@@ -330,8 +306,6 @@ fi
 ########################################## STEP A5 - prepare table summarising properties
 if [[ "$step" =~ "A0" ]] || [[ "$step" =~ "A5" ]]; then
 ###########################################
-module purge; conda deactivate
-
 
 awk -F "\t" '{print $4 > "tmp."$2".a1"}' postbin_contigcheck_FINAL6.tsv
 
@@ -360,9 +334,6 @@ fi
 ########################################## STEP A6 - alignment
 if [[ "$step" =~ "A0" ]] || [[ "$step" =~ "A6" ]]; then
 ###########################################
-module purge; conda deactivate
-
-module load mafft
 
 mafft --adjustdirectionaccurately --thread $SLURM_CPUS_PER_TASK --auto ${tmp}.005 > postbin_contigcheck_FINAL5.aln
 sed -i -E 's/^(>..................................................).*/\1/g' postbin_contigcheck_FINAL5.aln
@@ -380,10 +351,6 @@ fi
 ########################################## STEP B1 - alignment of final curated contigs
 if [[ "$step" =~ "B0" ]] || [[ "$step" =~ "B1" ]]; then
 ###########################################
-module purge; conda deactivate
-module load mafft
-module load fasttree/2.1.8
-
 
 awk -F ";" -v minlength=${minlength} -v mindepth=${mindepth} '{if($3 > minlength && $4 > mindepth && $0 !~ "sample;contig;length") print $0";yes;"minlength";"mindepth; else if($0 ~ "sample;contig;length") print $0";minlengthdepthpass;minlength;mindepth";  else print $0";no;"minlength";"mindepth}' postbin_contigcheck_FINAL5.tsv > tmp && mv tmp postbin_contigcheck_FINAL5.tsv
 
@@ -391,7 +358,7 @@ sed '1,1d' postbin_contigcheck_FINAL5.tsv | awk -F ";" -v minlength=${minlength}
 
 grep ">reference_" ${tmp}.005 | sed 's/>//g' >> ${tmp}.B001
 
-$seqkit grep -n -f ${tmp}.B001 ${tmp}.005 > ${bin}-d${mindepth}-l${minlength}-finalcontigs.fa
+seqkit grep -n -f ${tmp}.B001 ${tmp}.005 > ${bin}-d${mindepth}-l${minlength}-finalcontigs.fa
 sed -i -E 's/^(>..................................................).*/\1/g' ${bin}-d${mindepth}-l${minlength}-finalcontigs.fa
 
 
@@ -408,9 +375,6 @@ fi
 ########################################## STEP B2 - HYPHY GARD
 if [[ "$step" =~ "B0" ]] || [[ "$step" =~ "B2" ]]; then
 ###########################################
-module purge; conda deactivate
-module load hyphy/2.5.33
-
 
 hyphy CPU=$SLURM_CPUS_PER_TASK gard --alignment ${bin}-d${mindepth}-l${minlength}-finalcontigs.aln
 

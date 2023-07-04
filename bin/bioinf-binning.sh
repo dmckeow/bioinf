@@ -483,8 +483,7 @@ if [[ "$clean" == "true" ]]; then
 cd $OUTDIR
 
 rm -f *.evalue_*.dmnd.blastx*
-rm -f MAPPING-*
-rm -fr ${project}_*-annot
+rm -fr ${project}_*-annot MAPPING-*
 
 
 ##############################################################
