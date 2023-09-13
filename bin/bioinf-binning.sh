@@ -23,7 +23,6 @@ echo -e "\n${green}example job submissions:${nocolor}\n"
 echo -e "\tSUBMIT TO SLURM (see README for more info): ${cyan}sbatch --time=96:00:00 --cpus-per-task=24 --mem=240GB --partition long -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-binning.sh -i /path/to/samplelistfile -p project_name${nocolor}"
 echo -e "\tSUBMIT TO SLURM, running only steps A1 to A3, and without mapping: ${cyan}sbatch --time=96:00:00 --cpus-per-task=24 --mem=240GB --partition long -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-binning.sh -i /path/to/samplelistfile -p project_name -s A1_A2_A3 -n${nocolor}"
 echo -e "\tRUN LOCALLY (not recommended): ${cyan}bioinf-binning.sh -i /path/to/samplelistfile -p project_name --threads 24${nocolor}"
-echo -e "\n-c, --clean\tdelete all intermediate files that are not needed to continue with the binning\n"
 echo -e "\n-C, --concoct\trun auto binning with CONCOCT. Requires this script be run with mapping. Requires concoct setup through anvi'o as detailed in anvi'o installation\n"
 echo -e "-t, --threads\tnumber of threads for job (SLURM --cpus-per-task does the same thing); default 1\n"
 echo -e "-h, --help\tshow this help message and exit"
@@ -31,11 +30,10 @@ echo -e "-h, --help\tshow this help message and exit"
 
 ### set euclidean options to default setting here
 nomap="false"
-clean="false"
 concoct="false"
 ##
 
-while getopts i:p:s:m:S:ncCt:h option
+while getopts i:p:s:m:S:nCt:h option
 do 
     case "${option}" in
         i)input=${OPTARG};;
@@ -45,7 +43,6 @@ do
         m)mincontigsize=${OPTARG};;
         S)splitlength=${OPTARG};;
         n)nomap="true";;
-        c)clean="true";;
         C)concoct="true";;
         t)threads=${OPTARG};;
         h)Help; exit;;
@@ -331,10 +328,11 @@ anvi-export-contigs --splits-mode -c ${project}.db -o ${project}-SPLITS.fa
 ### Diamond blastx whole splits against custom dmnd databases
 ### reduce to best hit per split
 
-MAXTARGETS=$(seqkit stat -T ${project}-SPLITS.fa | sed '1,1d' | awk -F "\t" '{printf "%0.0f\n", $8/100}')
+####MAXTARGETS=$(seqkit stat -T ${project}-SPLITS.fa | sed '1,1d' | awk -F "\t" '{printf "%0.0f\n", $8/100}')
 
 for f in ${bioinfdb}/DMND/*; do
-    diamond blastx --max-target-seqs $MAXTARGETS --evalue 1e-20 --sensitive -p $THREADS -d $f -q ${project}-SPLITS.fa -f 6 -o $(basename $f .dmnd).evalue_1e-20.dmnd.blastx
+    ##diamond blastx --max-target-seqs $MAXTARGETS --evalue 1e-20 --sensitive -p $THREADS -d $f -q ${project}-SPLITS.fa -f 6 -o $(basename $f .dmnd).evalue_1e-20.dmnd.blastx
+    diamond blastx --range-culling --top 20 -F 15 --evalue 1e-20 --sensitive -p $THREADS -d $f -q ${project}-SPLITS.fa -f 6 -o $(basename $f .dmnd).evalue_1e-20.dmnd.blastx
 done
 
 ### best hit per split subject combo
@@ -366,6 +364,41 @@ done
 
 rm -f *.evalue_*.dmnd.blastx.tmp*
 
+####################### BLAST #############################
+### IF any blast database files are found in bioinfdb/BLAST, then also do a BLASTx search against those
+
+for f in $(ls ${bioinfdb}/BLAST | cut -d "." -f 1 | sort -Vu); do
+    blastx -evalue 1e-20 -num_threads $THREADS -db $f -query ${project}-SPLITS.fa -outfmt 6 -out $(basename $f).evalue_1e-20.ncbi.blastx
+done
+
+### best hit per split subject combo
+for f in *.evalue_*.ncbi.blastx; do
+    awk -F "\t" '!a[$1,$2]++' $f > ${f}.tmp1
+done
+
+
+### reduce info for each split to split name, number of hits
+
+for f in *.evalue_*.ncbi.blastx.tmp1; do
+    cut -f 1 $f | sort -V | uniq -c | sed -E 's/ +([0-9]+) (.*)/\2\t\1/g' > $(basename $f .tmp1).tmp2
+done
+
+for f in *.evalue_*.ncbi.blastx.tmp1; do
+    awk -F "\t" '!a[$1]++' $f | cut -f 1,2 | sort -V -t $'\t' -k 1,1 | cut -f 2 | paste $(basename $f .tmp1).tmp2 - > $(basename $f .tmp1).txt
+        sed -i -z "s/^/split\t${f}_num_hits\t${f}_tophit\n/1" $(basename $f .tmp1).txt
+        sed -i 's/\.tmp1//g' $(basename $f .tmp1).txt
+done
+
+for SETS in $(cat $input)
+do
+    PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
+        for f in *.evalue_*.ncbi.blastx.txt; do
+            anvi-import-misc-data -p profile_${PROFILENAME}/PROFILE.db --target-data-table items --just-do-it ${f}
+        done
+done
+
+
+rm -f *.evalue_*.ncbi.blastx.tmp*
 
 ##############################################################
 fi
@@ -396,7 +429,7 @@ grep ">" ${project}-SPLITS.fa | sed -E 's/>(.*)/\1\tBin_1/g' > ${project}-SPLITS
 
             mergedfile="profile_${project}-MERGED/PROFILE.db"
             if [[ -f "$mergedfile" ]]; then
-                for f in *.evalue_*.dmnd.blastx.txt; do
+                for f in *.evalue_*.blastx.txt; do
                     anvi-import-misc-data -p profile_${project}-MERGED/PROFILE.db --target-data-table items --just-do-it ${f}
                 done
 
@@ -478,14 +511,3 @@ fi
 ##############################################################
 ##################################################################
 
-###### clean up temporary and intermediate files
-if [[ "$clean" == "true" ]]; then
-cd $OUTDIR
-
-rm -f *.evalue_*.dmnd.blastx*
-rm -fr ${project}_*-annot MAPPING-*
-
-
-##############################################################
-fi
-##############################################################

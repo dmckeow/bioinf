@@ -107,7 +107,7 @@ if [[ -z "${step}" ]]; then
 fi
 
 mkdir -p "$BIOINFTMP"
-mkdir -p "$BIOINFDB"/{DMND,HMM,KAIJU,VOGDB} ### make folders for the databases
+mkdir -p "$BIOINFDB"/{BLAST,DMND,HMM,KAIJU,VOGDB} ### make folders for the databases
 
 echo -e "${cyan}Directory for bioinf temporary files is now: ${BIOINFTMP}${nocolor}"
 echo -e "${cyan}Directory for YOUR bioinf databases is now: ${BIOINFDB}${nocolor}"
@@ -276,11 +276,11 @@ T_O="tmp.A6"
 
 cd "$BIOINFTMP"
 
-### replace all the eukaryotic taxa to include all Eukaryote, plus Archaea and Bacteria in the nr_euk db built by kaiju
-for f in $(which kaiju)-*taxonlistEuk.tsv; do
-    cp $f ${f}_ORIGINAL
-    echo -e "Archaea\nBacteria\nEukaryota" | taxonkit name2taxid - | awk '{print $2"\t"$1}' > $f
-done
+### OBSOLETE - replace all the eukaryotic taxa to include all Eukaryote, plus Archaea and Bacteria in the nr_euk db built by kaiju
+####for f in $(which kaiju)-*taxonlistEuk.tsv; do
+    ####cp $f ${f}_ORIGINAL
+    ####echo -e "Archaea\nBacteria\nEukaryota" | taxonkit name2taxid - | awk '{print $2"\t"$1}' > $f
+#####done
 
 rm -fr "$BIOINFDB"/KAIJU/rvdb/* rvdb
 kaiju-makedb -s rvdb -t $THREADS

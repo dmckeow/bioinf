@@ -53,7 +53,7 @@ mamba install -y -c bioconda vmatch=2.3.0
 mamba install -y -c bioconda fastani=1.33
 ```
 
-## INSTALLATION STEP 2 - get other tools
+## INSTALLATION STEP 2 - get other tools and packages
 * Copy the following into your terminal:
 ```shell
 conda activate bioinftools ## your conda environment must be active to use it
@@ -66,6 +66,11 @@ mamba install -y -c bioconda porechop=0.2
 mamba install -y -c conda-forge pigz
 mamba install -y -c bioconda taxonkit=0.14
 mamba install -y -c bioconda mafft=7.5
+mamba install -y -c bioconda cd-hit
+
+## R packages
+mamba install -y -c bioconda r-svglite
+mamba install -y -c conda-forge r-reshape
 
 ### packages for isONcorrect:
 pip install isONcorrect
@@ -224,6 +229,8 @@ ___
 * No specific databases are required by the pipelines, but having NO databases in any of these database directories will cause some scripts to complain. Some scripts may not work if certain database categories were not used at all.
 ```shell
 bioinfdb
+    |------BLAST ## nr database files built by makeblastdb (see below)
+    |
     |------DMND ## .dmnd database files built by diamond makedb (see below)
     |
     |------HMM ## subdirectories each containing a single hmmer profile built from a set of reference proteins (see below)
@@ -234,6 +241,13 @@ bioinfdb
 
 ```
 * Use soft links to databases files that already exist on your system to avoid space wastage - e.g. `ln -s /path/to/shared/nr.dmnd /path/to/my/bioinfdb/DMND/nr.dmnd`
+
+#### BLAST
+* Simple. By default, bioinftools does not build any BLAST databases (because Diamond is faster), but whatever blast database files or links you place in the BLAST folder will be used by the pipeline.
+* See BLAST's instructions for making a database (makeblastdb)
+```shell
+ln -s /common/bioref/blast/latest/nr.* /home/dcschroe/dmckeow/bioinfdb/BLAST ## example of making a symbolic link to an existing blastdb
+```
 
 #### DMND
 * Easy! A diamond database file is just a single .dmnd file. See [diamond](https://github.com/bbuchfink/diamond). Also:

@@ -8,16 +8,16 @@ Help()
 {
 echo -e "bioinf-assembly-canu is for de novo assembly of ONT sequencing data of metagenomes, using CANU. \nAll reads provided as input will be assembled together, so provide only the reads for a single sequencing barcode per script job submission (unless you intend to co-assemble multiple samples/runs).\nThis script will NOT perform any changes to your original input data.\nIt will use Porechop to remove Oxford Nanopore adapters.\n${red}This script is intended for job submission to a SLURM cluster using sbatch - running it another way will NOT work.${nocolor}\n"
 echo -e "${green}########### REQUIRED arguments ###########${nocolor}\n"
-echo -e "-i --input\t Provide the path to a single fastq.gz file OR a single directory containing multiple fastq.gz files. OR provide a plain text file that lists the absolute paths to multiple read FILES in a single column (this is useful for assembling together reads that are within multiple directories.\n${red}Read files MUST be in the fastq.gz format AND have the .fastq.gz file extension${nocolor}\n"
-echo -e "-p --project\tA meaningful and unique name for your project. Output files will contain this name\n"
+echo -e "-i -input\t Provide the path to a single fastq.gz file OR a single directory containing multiple fastq.gz files. OR provide a plain text file that lists the absolute paths to multiple read FILES in a single column (this is useful for assembling together reads that are within multiple directories.\n${red}Read files MUST be in the fastq.gz format AND have the .fastq.gz file extension${nocolor}\n"
+echo -e "-p -project\tA meaningful and unique name for your project. Output files will contain this name\n"
 echo -e "${green}########### OPTIONAL arguments ###########${nocolor}\n"
-echo -e "-s, --step\tWhich script steps to run. Steps available:\n"
+echo -e "-s, -step\tWhich script steps to run. Steps available:\n"
 awk '/^###### STEP-/ {print "\t\t"$0}' $(which bioinf-assembly-canu.sh)
-echo -e "\n-G, --genomesize [default = 10000]\texpected genome size in bp - use the smallest genome size expected (going too small is fine, but a genome size that is too big may cause assembly failure)\n"
-echo -e "-R, --minread [default = 1000]\tminimum read length to use in bp - use a read length that is short enough so that CANU doesn't exclude too much of your data\n"
-echo -e "-V, --minoverlap [default = 500]\tminimum read overlaps to allow in bp - CANU's default is 500 bp overlap with a minimum read length of 1000 bp - you might need to try proportionately shorter overlaps than this, especially if your reads are shorter than 1000 bp. For 300-500 bp long reads, I have found that an overlap of 20-50 succeeds at generating good contigs, but going higher results in few or no contigs\n"
-echo -e "-r, --resume [default = false]\trestart a previous run from where it last ended. Useful for resuming interrupted jobs without losing progress\n"
-echo -e "-I, --isoncorrect [default = false]\tPerform additional correction of reads using isONcorrect. For cDNA data\n"
+echo -e "\n-G, -genomesize [default = 10000]\texpected genome size in bp - use the smallest genome size expected (going too small is fine, but a genome size that is too big may cause assembly failure)\n"
+echo -e "-R, -minread [default = 1000]\tminimum read length to use in bp - use a read length that is short enough so that CANU doesn't exclude too much of your data\n"
+echo -e "-V, -minoverlap [default = 500]\tminimum read overlaps to allow in bp - CANU's default is 500 bp overlap with a minimum read length of 1000 bp - you might need to try proportionately shorter overlaps than this, especially if your reads are shorter than 1000 bp. For 300-500 bp long reads, I have found that an overlap of 20-50 succeeds at generating good contigs, but going higher results in few or no contigs\n"
+echo -e "-r, -resume [default = false]\trestart a previous run from where it last ended. Useful for resuming interrupted jobs without losing progress\n"
+echo -e "-I, -isoncorrect [default = false]\tPerform additional correction of reads using isONcorrect. For cDNA data\n"
 echo -e "!!! Checking your ASSEMBLY run !!!\n check your slurm.out and slurm.err logs and the canu.out file in your final output folder. OR check what files you have in your temporary and final output folders - a successful run will have corrected reads, trimmed reads, AND contigs.fasta"
 echo -e "\n!!! IMPORTANT NOTES !!!\n There is some error that causes canu jobs to end early without generating contigs. This usually happens during the final contig generation stage. It is possibly a memory overuse issue, BUT the job might complete if you resume it. If your job has trimmed reads file and corrected reads file, but no contigs, then run it again with --resume. In fact it is probably best to just try and resume all failed canu runs anyway"
 echo -e "\nCANU has a complex set of options, and this script in its original state has certain set parameters for canu, including: -nanopore, 32g minimum memory, use grid. If you wish to change canus' parameters, the only way to do so is to edit your copy of the script itself. Feel free to do so"
@@ -173,10 +173,16 @@ cd ${TMPDIR}
 rm -f "${TMPDIR}"/"${project}"
 echo "RUNNING" > "${TMPDIR}"/"${project}"
 
+if [[ "$isoncorrect" == "true" ]]; then
+    trimassemble="-trim-assemble"
+elif [[ "$isoncorrect" == "false" ]]; then
+    trimassemble=""
+fi
+
 canu -p "${project}" -d "${TMPDIR}" \
 genomeSize="${genomesize}" \
 maxInputCoverage=10000 corOutCoverage=all corMinCoverage=0 corMhapSensitivity=high \
-minReadLength="${minread}" minOverlapLength="${minoverlap}" \
+minReadLength="${minread}" minOverlapLength="${minoverlap}" $trimassemble \
 useGrid=true -nanopore "${TMPDIR}/${project}.bctrimmedreads.fastq.gz" \
 gridOptionsJobName="canu.${SLURM_JOB_ID}" \
 gridOptions="--time=${SLURM_TIME} --partition ${SLURM_PARTITION}" \
