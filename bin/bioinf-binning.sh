@@ -368,7 +368,7 @@ rm -f *.evalue_*.dmnd.blastx.tmp*
 ### IF any blast database files are found in bioinfdb/BLAST, then also do a BLASTx search against those
 
 for f in $(ls ${bioinfdb}/BLAST | cut -d "." -f 1 | sort -Vu); do
-    blastx -evalue 1e-20 -num_threads $THREADS -db $f -query ${project}-SPLITS.fa -outfmt 6 -out $(basename $f).evalue_1e-20.ncbi.blastx
+    blastx -evalue 1e-20 -num_threads $THREADS -db ${bioinfdb}/BLAST/$f -query ${project}-SPLITS.fa -outfmt 6 -out $(basename $f).evalue_1e-20.ncbi.blastx
 done
 
 ### best hit per split subject combo
