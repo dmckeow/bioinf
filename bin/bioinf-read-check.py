@@ -12,13 +12,25 @@ import pandas as pd
 from Bio import SeqIO
 import shlex
 
-parser = argparse.ArgumentParser(description="Compare one sequence file to any number of other sequence files, providing summaries of the presence of every sequence of that file in every other file provided. Whilst it can be used for any type of sequence, an example of its use is to compare raw reads by sequence name to show the proportions of reads that made it through to various steps in an assembly - i.e. barcode trimming, correction, and finally contigs", epilog="""USAGE EXAMPLE: sbatch --time=24:00:00 --cpus-per-task=12 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err --wrap='eval "$(conda shell.bash hook)"; conda activate bioinftools; bioinf-read-check.py -c /panfs/jay/groups/27/dcschroe/dmckeow/data/CANU_molecular_survey/CANU_molecular_survey_barcode11 -p testreadcheck'""")
-parser.add_argument("-i", "--input", help="Paths to input fastq and/or fasta file(s). The first (leftmost) file will be comapred to all the other files, to assess the presence or absence of each sequence in the first file in each of the other files. You must provide at least 2 files and can provide as many as you want, separated by spaces", nargs='+')
-parser.add_argument("-d", "--differ", help="If any of your files provided in --input have headers that do not match the first file - for example if your reads were assigned different names in a processed read file, or if you want to summarise reads and contigs, then you can provide a tab-separated file with 2 columns: column 1 is the name in your first sequence file, and column 2 is an equivalent name found in any other sequence file")
-parser.add_argument("-c", "--canu", help="Path to directory containing canu output file(s)for a single assembly. With this option, the script will automatically set --input and --differ using the output files from canu")
+parser = argparse.ArgumentParser(description="Bioinf-read-check uses a successful CANU assembly (i.e. with contigs) and creates a series of plots to show read classifications (by Kaiju) and a breakdown of how many reads for taxa failed or passed each step of the CANU assembly process", epilog="""USAGE EXAMPLE (DO NOT run for multiple assemblies from the same directory - it will overwrite any previous outputs from this script): sbatch --time=24:00:00 --cpus-per-task=12 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err --wrap='eval "$(conda shell.bash hook)"; conda activate bioinftools; bioinf-read-check.py -c /panfs/jay/groups/27/dcschroe/dmckeow/data/CANU_molecular_survey/CANU_molecular_survey_barcode11'""")
+parser.add_argument("-i", "--input", help="NO LONGER IN USE", nargs='+')
+parser.add_argument("-d", "--differ", help="NO LONGER IN USE")
+parser.add_argument("-c", "--canu", help="Path to directory containing canu output file(s)for a single assembly. With this option, the script will automatically set --input and --differ using the output files from canu", required=True)
 parser.add_argument("-t", "--threads", help="number of threads (default=4)", type=int, default=4)
 
 args = parser.parse_args()
+
+## delete any files from previous runs if needed
+for f in glob.glob("*___*.fastaheaders*"):
+	os.remove(f)
+for f in glob.glob("*.kaiju.*.tmp"):
+	os.remove(f)
+for f in glob.glob("*.kaiju.merge"):
+	os.remove(f)
+for f in glob.glob("*allcompare.*"):
+	os.remove(f)
+for f in glob.glob("read_header"):
+	os.remove(f)
 
 ## check for variables
 if (args.input is None and args.canu is None) or (args.input is not None and args.canu is not None):
@@ -100,8 +112,8 @@ def get_output_filename(input_file, counter):
 	file_name_without_ext = os.path.splitext(file_name)[0]
 	return f"{counter}___{file_name_without_ext}"
 
-##################
-def compare_headers(search_file_pattern):
+################## original
+def compare_headers_OLD(search_file_pattern):
 	current_directory = os.getcwd()  # Get the current working directory
 
 	# Find the search file 1___ for fasta headers
@@ -121,11 +133,11 @@ def compare_headers(search_file_pattern):
 
 	# Iterate over each fastaheader list file in the directory
 	for file_name in os.listdir(current_directory):
-		if not re.match(r'^[0-9]+___.*\.fastaheaders$', file_name):
+		if not re.match(r'^[0-9]+___.*\.fastaheaders$', file_name) and not re.match(r'^1___.*\.fastaheaders$', file_name):
 			continue  # Skip files that do not match the pattern
 		file_path = os.path.join(current_directory, file_name)
 		output_file = f"{file_name}.compare.1.tmp"  # Output file named after the searched file
-
+		print(f"BEGIN Compare header on '{file_name}'")
 		# Open the file and read its contents
 		with open(file_path, 'r') as f:
 			found_words = []  # List to store found words in the file
@@ -145,15 +157,62 @@ def compare_headers(search_file_pattern):
 					f.write("1\n")
 				else:
 					f.write("0\n")
+		print(f"Compare header on '{file_name}' DONE")
 
+
+
+####### TESTING!
+def compare_headers(search_file_pattern):
+	current_directory = os.getcwd()
+
+	# Find the search file for fasta headers
+	search_file = None
+	for file_name in os.listdir(current_directory):
+		if re.match(search_file_pattern, file_name):
+			search_file = os.path.join(current_directory, file_name)
+			break
+
+	if not search_file:
+		print(f"Search file matching pattern '{search_file_pattern}' not found.")
+		return
+
+	# Read the list of fasta headers from the search file
+	with open(search_file, 'r') as f:
+		search_words = {line.strip() for line in f}  # Use a set for faster membership tests
+
+	# Compile the regex pattern outside the loop
+	header_file_pattern = re.compile(r'^[0-9]+___.*\.fastaheaders$')
+
+	# Iterate over each fasta header list file in the directory
+	for file_name in os.listdir(current_directory):
+		if not header_file_pattern.match(file_name):
+			continue
+		if file_name == os.path.basename(search_file):
+			continue ## skip if it is the search file 1__
+
+		file_path = os.path.join(current_directory, file_name)
+		output_file = f"{file_name}.compare.1.tmp"
+		print(f"BEGIN Compare header on '{file_name}'")
+		# Read the entire file into memory
+		with open(file_path, 'r') as f:
+			file_content = f.read()
+
+		found_words = {search_word for search_word in search_words if search_word in file_content}
+
+		with open(output_file, 'w') as f:
+			for search_word in search_words:
+				f.write("1\n" if search_word in found_words else "0\n")
+		print(f"Compare header on '{file_name}' DONE")
+
+#######
 def concatenate_files(pattern, output_file):
 	with open(output_file, 'w') as outfile:
 		file_list = glob.glob(pattern)
 		for file_name in file_list:
 			with open(file_name, 'r') as infile:
 				outfile.write(infile.read())
-
-def compare_and_append(file1_path, file_set_pattern):
+## original
+def compare_and_append_OLD(file1_path, file_set_pattern):
 	# Read File1
 	with open(file1_path, 'r') as file1:
 		file1_lines = file1.readlines()
@@ -166,6 +225,7 @@ def compare_and_append(file1_path, file_set_pattern):
 
 	# Compare File1 to each file in the set
 	for file_name in file_set:
+		print(f"BEGIN Compare and append on '{file_name}'")
 		appended_lines = []
 		with open(file_name, 'r') as file:
 			file_lines = file.readlines()
@@ -183,28 +243,63 @@ def compare_and_append(file1_path, file_set_pattern):
 
 		with open(file_name, 'a') as file:
 			file.write(appended_content)
+		print(f"Compare and append on '{file_name}' DONE")
 
+##### NEW - faster!
+def compare_and_append(file1_path, file_set_pattern):
+	# Read File1
+	with open(file1_path, 'r') as file1:
+		file1_lines = file1.readlines()
+
+	# Find files in the set using the provided pattern
+	file_set = []
+	for file_name in os.listdir('.'):
+		if re.match(file_set_pattern, file_name) and os.path.isfile(file_name):
+			file_set.append(file_name)
+	# Compile the regex pattern outside the loop
+	file_set_pattern_compiled = re.compile(file_set_pattern)
+
+	# Create a dictionary from file_lines for faster matching
+	file_lines_dict = {}
+	for file_name in file_set:
+		print(f"BEGIN Compare and append on '{file_name}'")
+		with open(file_name, 'r') as file:
+			file_lines = file.readlines()
+			file_lines_dict[file_name] = {line.strip().split('\t')[0] for line in file_lines}
+
+	# Iterate over lines in File1
+	appended_lines = []
+	for line in file1_lines:
+		column1, column2 = line.strip().split('\t')
+		for file_name in file_set:
+			if column2 in file_lines_dict[file_name]:
+				# Append column1 from the matching line in File1 to the current file
+				appended_lines.append(column1 + '\n')
+				break  # Break once a match is found in a file
+
+	appended_content = ''.join(appended_lines)
+
+	# Append the content to each file in the file_set
+	for file_name in file_set:
+		with open(file_name, 'a') as file:
+			file.write(appended_content)
+		print(f"Compare and append on '{file_name}' DONE")
 
 ## prepare the sequence headers
-#process_input_files(input_files)
+process_input_files(input_files)
 
 ## delete tmp files
-#for f in glob.glob("*.tmp"):
-	#os.remove(f)
+for f in glob.glob("*.tmp"):
+	os.remove(f)
 
 
 ## differ fix
-#if differ_file:
-#	compare_and_append(differ_file, r'^[0-9]+___.*\.fastaheaders$')
+if differ_file:
+	compare_and_append(differ_file, r'^[0-9]+___.*\.fastaheaders$')
 
-
-## compare sequence headers to count read naem occurances in the headers of each sequence file
-#search_file_pattern = r'^1___.*\.fastaheaders$' # Pattern to match the search file names
-#compare_headers(search_file_pattern)
-
-## delete the comparison between sequence file 1 and itself
-for f in glob.glob("1___*.fastaheaders.compare.1.tmp"):
-	os.remove(f)
+## compare sequence headers to count read name occurances in the headers of each sequence file
+search_file_pattern = r'^1___.*\.fastaheaders$' # Pattern to match the search file names
+compare_headers(search_file_pattern)
 
 #### run kaiju on the first sequence file
 for f in os.listdir(os.path.join(bioinfdb, "KAIJU")):
@@ -219,13 +314,9 @@ for f in os.listdir(os.path.join(bioinfdb, "KAIJU")):
 		names_dmp = os.path.join(f_path, "names.dmp")
 
 		# Execute kaiju command
-		#cmd = "kaiju -v -t "+ nodes_dmp +" -f "+ kaiju_fmi +" -i "+ kaiju_input +" -o "+ kaiju_output +".kaiju.1.tmp -z "+ THREADS
-		#kaiju_command = shlex.split(cmd)
-		#subprocess.call(kaiju_command)
-
-		# Execute sort command
-		sort_command = f"sort -t $'\t' -V -k 2,2 {kaiju_output}.kaiju.1.tmp -o {kaiju_output}.kaiju.2.tmp"
-		#subprocess.run(sort_command, shell=True)
+		cmd = "kaiju -v -t "+ nodes_dmp +" -f "+ kaiju_fmi +" -i "+ kaiju_input +" -o "+ kaiju_output +".kaiju.1.tmp -z "+ THREADS
+		kaiju_command = shlex.split(cmd)
+		subprocess.call(kaiju_command)
 
 		# Execute kaiju-addTaxonNames command
 		add_taxon_names_command = f"kaiju-addTaxonNames -t {nodes_dmp} -n {names_dmp} -i {kaiju_output}.kaiju.1.tmp -o {kaiju_output}.kaiju.names.tmp -r superkingdom,phylum,order,class,family,genus,species"
@@ -281,7 +372,7 @@ def paste_files(patterns, output_file_path):
 
 file_name = os.path.basename(input_files[0])
 output_file = os.path.splitext(file_name)[0] + ".allcompare.tmp"
-patterns = ['1___*fastaheaders', '*___*fastaheaders.compare.1.tmp']
+patterns = ['1___*fastaheaders', '2___*fastaheaders.compare.1.tmp', '3___*fastaheaders.compare.1.tmp', '4___*fastaheaders.compare.1.tmp']
 paste_files(patterns, output_file)
 
 ### sort the allcompare
@@ -305,4 +396,79 @@ patterns = ['*.allcompare.tmp', '*.kaiju.merge']
 paste_files(patterns, output_file)
 
 
-######### this script works, just need to add a header to the final file and then make figures with it
+## get names for the files used as input to be headers
+file_patterns = ['1___*fastaheaders', '2___*fastaheaders.compare.1.tmp', '3___*fastaheaders.compare.1.tmp', '4___*fastaheaders.compare.1.tmp']
+output_file = "read_header"
+
+with open(output_file, 'w') as f:
+	for pattern in file_patterns:
+		file_names = glob.glob(pattern)
+		for file_name in file_names:
+			f.write(file_name + '\t')
+	f.write('\n')
+
+## fix header names
+
+# Read the content of the file
+with open('read_header', 'r') as file:
+	file_content = file.read()
+# Remove ".fastaheaders" and ".fastaheaders.compare.1.tmp" from the content using replace()
+modified_content = file_content.replace(".fastaheaders", "").replace(".compare.1.tmp", "")
+# Write the modified content back to the file
+with open('read_header', 'w') as file:
+	file.write(modified_content)
+
+
+###### add kaiju header info
+# Read the content of the file
+with open('read_header', 'r') as file:
+	lines = file.readlines()
+
+modified_lines = [line.strip() + "\tclassified_unclassified\tread_name\tNCBI_taxid_best\tkaiju_match_score\tNCBI_taxid_all\tNCBI_accession_all\tmatching_seq_frag\tNCBI_full_taxon_lineage\n" for line in lines]
+
+# Write the modified lines back to the file
+with open('read_header', 'w') as file:
+	file.writelines(modified_lines)
+
+##### add header to final file
+# Define the names of the input files
+file1_name = 'read_header'
+file2_pattern  = '*.allcompare.kaiju'
+
+# Define the name of the output (concatenated) file
+output_file_name = 'bioinf_readcheck_allcompare.final'
+
+# Read the content of the first file
+with open(file1_name, 'r') as file1:
+	content_file1 = file1.read()
+
+# Initialize an empty string to store the concatenated content
+concatenated_content = content_file1
+
+# Find files matching the glob pattern for file2
+file2_matches = glob.glob(file2_pattern)
+
+# Iterate through matching files and concatenate their content
+for file2_name in file2_matches:
+	with open(file2_name, 'r') as file2:
+		content_file2 = file2.read()
+	concatenated_content += content_file2
+
+# Write the concatenated content to the output file
+with open(output_file_name, 'w') as output_file:
+	output_file.write(concatenated_content)
+
+## make csv file and replace possible false delimiters
+
+# Read the content of the file
+with open('bioinf_readcheck_allcompare.final', 'r') as file:
+	file_content = file.read()
+# Remove ".fastaheaders" and ".fastaheaders.compare.1.tmp" from the content using replace()
+modified_content = file_content.replace("; ", ";").replace(",", ";").replace("\t", ",")
+# Write the modified content back to the file
+with open('bioinf_readcheck_allcompare.final', 'w') as file:
+	file.write(modified_content)
+
+
+##### run the R script
+subprocess.call("bioinf-read-check.r")

@@ -11,23 +11,21 @@ Help()
 {
 echo -e "${red}This script is for preparing all of the databases and variables needed to run the bioinf pipelines. FOLLOW the guide to use this script in the README.md OR at https://github.com/dmckeow/bioinf${nocolor}"
 echo -e "\n${cyan}REQUIRED PARAMETERS${nocolor}"
-echo -e "${green}This script will setup the databases needed for the all of the Schroeder lab scripts and pipelines${nocolor}"
-echo -e "${red}NOTE 1 - some of the databases generated are quite large - currently around 200 GB for the kaiju databases. If someone in your group has already ran this full script, then you could save space and time by simply running this script with the --existing option${nocolor}"
-echo -e "${green}NOTE 2 - Similarly, if you want to update your system's paths to your own scripts and databases, without re-downloading or setting up anything, simply run Step A1 of this script on its own - e.g. -s A1 ${nocolor}"
-echo -e "-t --tmp\tThe absolute path to a temporary large storage folder - ${cyan} a folder named after your username will be made there${nocolor}"
-echo -e "-d --db\tThe absolute path to where you want your bioinf db setup - a ${cyan}folder named bioinfdb will be made there${nocolor}. Best not to put the database in the bioinf folder"
+echo -e "${green}This script will setup the databases needed for the all of the bioinf scripts and pipelines${nocolor}"
+echo -e "${red}NOTE - some of the databases generated are quite large - currently around 200 GB for the kaiju databases. If someone in your group has already ran this full script, then you could save space and time by simply running this script with the -existing option${nocolor}"
+echo -e "-t -tmp\tThe absolute path to a temporary large storage folder - ${cyan} a folder named after your username will be made there${nocolor}"
+echo -e "-d -db\tThe absolute path to where you want your bioinf db setup - a ${cyan}folder named bioinfdb will be made there${nocolor}. IF using option -existing, DO NOT set -db to a folder than is inside of the -existing folder"
 echo -e "\n${cyan}OPTIONAL PARAMETERS${nocolor}"
-echo -e "\n-s --step\t Which script steps to run. If blank, whole script is run. You can run multiple specific steps - e.g. A1_A2_A6 will only run steps A1, A2 and A6"
+echo -e "\n-s -step\t Which script steps to run. You probably don't need to use this option. If blank, whole script is run. You can run multiple specific steps - e.g. A1_A2_A6 will only run steps A1, A2 and A6"
 echo -e "\t${green}STEPS AVAILABLE: ${nocolor}"
 awk '/^###### STEP-/ {print "\t\t"$0}' $SCRIPT
-echo -e "-E --existing\t The absolute path to a previously setup bioinf db directory e.g. /home/BIOINFDB - with this option provided, the script will make soft links to all the database files found within the pre-existing shared bioinf setup, and link your setup to them. Doing this avoids having to re-download and rebuild databases that might already exist within your system or computing group"
-echo -e "-D --dmnd\t A protein fasta file to generate an additional custom dmnd database. Use -s B1 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
-echo -e "-k --kaiju\t Specify one of kaiju's databses to build, in addition to the defaults made by this script. Do kaiju-makedb --help to see the options (with the conda environment bioinftools active) - e.g. -k fungi . Use -s B2 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
-echo -e "-T, --threads\tnumber of threads for job (SLURM --cpus-per-task does the same thing); default 1"
-echo -e "-h, --help\tshow this help message and exit\n"
-echo -e "\nEXAMPLES FOR RUNNING SCRIPT:\n\tFRESH SETUP VIA SLURM (see README for more info):\n${cyan} sbatch --cpus-per-task=12 --time=96:00:00 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err /path/to/your/bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow${nocolor}"
-echo -e "\tSETUP USING A SHARED DATABASE (see README for more info; you don't need the path to your bioinf-setup.sh if you have already ran step A1 of this script):\n${cyan} /path/to/your/bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -E /home/existing/bioinfdb${nocolor}"
-echo -e "\tUPDATE ONLY THE ENVIRONMENTAL VARIABLES WITHOUT CHANGING ANYTHING ELSE (with step A1 previously ran) see README for more info):\n${cyan} bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -s A1${nocolor}"
+echo -e "-E -existing\t The absolute path to a previously setup bioinf db directory e.g. /home/BIOINFDB - with this option provided, the script will make soft links to all the database files found within the pre-existing shared bioinf setup, and link your setup to them. Doing this avoids having to re-download and rebuild databases that might already exist within your system or computing group"
+echo -e "-D -dmnd\t A protein fasta file to generate an additional custom dmnd database. Use -s B1 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
+echo -e "-k -kaiju\t Specify one of kaiju's databses to build, in addition to the defaults made by this script. Do kaiju-makedb -help to see the options (with the conda environment bioinftools active) - e.g. -k fungi . Use -s B2 to run this in isolation. Can be run as many times as you want, and all databases will used in the binning pipeline"
+echo -e "-T, -threads\tnumber of threads for job (SLURM --cpus-per-task does the same thing); default 1"
+echo -e "-h, -help\tshow this help message and exit\n"
+echo -e "\nEXAMPLES FOR RUNNING SCRIPT:\n\t 3a. FRESH SETUP VIA SLURM (see README for more info):\n${cyan} sbatch --cpus-per-task=12 --time=96:00:00 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err /path/to/your/bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow${nocolor}"
+echo -e "\t 3b. SETUP DATABASE LINK (see README for more info):\n${cyan} /path/to/your/bioinf-setup.sh -t /scratch.global -d /home/dcschroe/dmckeow -E /home/existing/bioinfdb${nocolor}"
 }
 
 while getopts t:d:s:E:D:k:T:h option
@@ -48,14 +46,17 @@ done
 
 ####################### SET AND CHECK VARIABLES/ARGUMENTS #####################################
 
-if [[ -z "${tmp}" ]]; then echo -e "${red}-t, --tmp REQUIRED. You must provide the script a location to place the large temporary files${nocolor}"; exit; fi
+if [[ -z "${tmp}" ]]; then echo -e "${red}-t, -tmp REQUIRED. You must provide the script a location to place the large temporary files${nocolor}"; exit; fi
 
-if [[ -z "${db}" ]]; then echo -e "${red}-d, --db REQUIRED. You must provide the script a location to build the database${nocolor}"; exit; fi
+if [[ -z "${db}" ]]; then echo -e "${red}-d, -db REQUIRED. You must provide the script a location to build the database${nocolor}"; exit; fi
+
+if [[ ! -z "${db}" ]] && [[ ! -z "${existing}" ]] && [[ ${db} == ${existing} ]]; then echo -e "${red}SETUP did not run because the same directory was given for the new database link and exisiting database: DO NOT place -db within the -existing folder! ${nocolor}"; exit; fi
+
 
 BIOINFDB="${db}/bioinfdb"
 BIOINFTMP="${tmp}/${USER}"
 
-if [[ ! -z "${existing}" ]]; then step="A1_A2"; echo -e "${cyan}Running with --existing option: creating symbolic links to all files/folders from origin: ${existing} to destination: ${BIOINFDB}${nocolor}"; fi
+if [[ ! -z "${existing}" ]]; then step="A1_A2"; echo -e "${cyan}Running with -existing option: creating symbolic links to all files/folders from origin: ${existing} to destination: ${BIOINFDB}${nocolor}"; fi
 
 chmod +x ${SCRIPTPATH}/*
 
@@ -63,9 +64,9 @@ chmod +x ${SCRIPTPATH}/*
 
 if [[ ! -z "${SLURM_CPUS_PER_TASK}" ]]; then THREADS="${SLURM_CPUS_PER_TASK}"; echo -e "${green}Using threads set by SLURM_CPUS_PER_TASK:${nocolor}"; fi
 
-if [[ ! -z "${threads}" ]]; then THREADS="${threads}"; echo -e "${green}Using threads set by --threads flag:${nocolor}"; fi
+if [[ ! -z "${threads}" ]]; then THREADS="${threads}"; echo -e "${green}Using threads set by -threads flag:${nocolor}"; fi
 
-if [[ -z "${threads}" ]] && [[ -z "${SLURM_CPUS_PER_TASK}" ]]; then THREADS="1"; echo -e "${green}No SLURM_CPUS_PER_TASK or --threads set, using default threads:${nocolor}"; fi
+if [[ -z "${threads}" ]] && [[ -z "${SLURM_CPUS_PER_TASK}" ]]; then THREADS="1"; echo -e "${green}No SLURM_CPUS_PER_TASK or -threads set, using default threads:${nocolor}"; fi
 echo -e "\t${THREADS} threads"
 
 ####################### CHECK FOR DEPENDENCIES #####################################

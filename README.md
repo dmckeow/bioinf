@@ -67,6 +67,7 @@ mamba install -y -c conda-forge pigz
 mamba install -y -c bioconda taxonkit=0.14
 mamba install -y -c bioconda mafft=7.5
 mamba install -y -c bioconda cd-hit
+mamba install -y -c conda-forge -c bioconda mmseqs2
 
 ## R packages
 mamba install -y -c bioconda r-svglite
@@ -78,8 +79,26 @@ mamba install -c bioconda spoa
 pip install isONclust
 mamba install -c bioconda "pychopper>=2.0"
 ```
-
-* Sadly, installing canu through conda is a bit dodgy - so install version 2.2 of [CANU](https://github.com/marbl/canu ) by `downloading a binary release as detailed in the CANU git`
+* Install packages within R environment
+```shell
+conda activate bioinftools
+R
+install.packages("RColorBrewer")
+install.packages("dplyr")
+install.packages("forcats")
+install.packages("ggalluvial")
+install.packages("ggplot2")
+install.packages("ggrepel")
+install.packages("plotrix")
+install.packages("reshape")
+install.packages("svglite")
+install.packages("tidyr")
+install.packages("tidyverse")
+install.packages("treemapify")
+install.packages("viridisLite")
+install.packages("viridis")
+```
+* Sadly, installing canu through conda can sometimes not work - so install version 2.2 of [CANU](https://github.com/marbl/canu ) by `downloading a binary release as detailed in the CANU git`
 * Once it is installed you must add canu to your path as follows:
 ```shell
 sed -i -z "s|$|\nexport PATH=\"path\/to\/your\/canu-2.2\/bin:\$PATH\"\n|g" $HOME/.bashrc ## replace path\/to\/your\/ with your actual path - you MUST use \/ instead of / in your path
@@ -90,8 +109,10 @@ canu --help ## if you see canu's help message then you are good to go
 * If this absolutely isn't working you can also try to install canu using conda
 
 ## INSTALLATION STEP 3 - download and setup bioinf pipelines, scripts, and databases
-`CHOOSE BETWEEN 3a. 3b. or 3c. :`
-### 3a. For a fresh setup
+`FOR a NEW SETUP and bioinfdb: run 3a. AND 3b.`
+`If you just wish to relocate your databse or update your scripts, then run 3b. ONLY`
+
+### 3a. For a fresh setup (creates new databases from scratch)
 * If you are creating a fresh setup for bioinf, copy the following, but replace /path/to/temporary_directory with your system's path to the temporary_directory storage:
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
@@ -104,30 +125,18 @@ source ~/.bashrc ## OR logout and log back in
 ```
 * Note that this example is for submitting to a SLURM cluster - the parameters before bioinf-setup.sh are SLURM and system specific - change them according to your own requirements.
 
-### 3b. IF your computing group has a pre-existing bioinfdb that you can share:
-* If someone has already setup bioinf by running the full bioinf-setup.sh script (and you have access permissions to it), then consider doing this instead - it will simply configure your version of bioinf to run using the pre-existing setup. This will complete within minutes and save 100s in GB of storage space.
-* Creates symbolic links to pre-existing databases. Each user still has their own database directory. Each user can then add/remove databases without affecting anyone elses database setup (EXCEPT that deleting files in the original database will remove them from all linked db copies)
+### 3b. Create a directory that links to the database directories (links to an existing bioinfdb)
+* If you have access to a bioinfdb that has already been setup, then you should just run 3b - it will simply configure your version of bioinf to run using the pre-existing setup. This will complete within minutes and save 100s in GB of storage space.
+* Creates symbolic links to pre-existing databases. This allows us to share a core bioinfdb that multiple users can use. Each user can then add/remove databases from their own database without affecting anyone elses database setup (EXCEPT that deleting files in the original database will remove them from all linked db copies)
 * Copy the following code, but with your own paths:
 ```shell
 git clone https://github.com/dmckeow/bioinf.git
 chmod +x bioinf/bin/*
-bioinf/bin/bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory -E /path/to/existing/bioinfdb ## replace with your actual paths - if bioinf is already setup (step A1 ahs put it on your PATH), then you can do bioinf-setup.sh instead of bioinf/bin/bioinf-setup.sh
+bioinf/bin/bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/your/database/directory -E /path/to/existing/bioinfdb ## replace with your actual paths
 source ~/.bashrc ## OR logout and log back in
 ```
 * Temporary storage is specified because some scripts such as bioinf-assembly-canu.sh will generate quite large temporary files - so you should choose somewhere with enough capacity to handle 10s to 100s of GB of data. If you are on a SLURM cluster, use the scratch directory!
 * This version of the setup process can be run locally - no SLURM sbatch required
-
-### 3c. IF you already have your own personal bioinfdb setup and just need to update the locations of the databases and script files
-* This is useful if you need to change the location of your bioinf, bioinfdb, or bioinftmp
-* Intended for a user to re-connect to their own database
-* BEWARE: if you leave out -s A1, then a fresh setup will begin and your existing db will get deleted
-```shell
-git clone https://github.com/dmckeow/bioinf.git
-chmod +x bioinf/bin/*
-bioinf/bin/bioinf-setup.sh -t /path/to/temporary_storage -d /path/to/directory/containing/your/bioinfdb -s A1 ## replace with your actual paths
-source ~/.bashrc ## OR logout and log back in
-```
-
 
 ## And that is the installation and setup done!
 

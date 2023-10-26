@@ -18,7 +18,7 @@ echo -e "-R, -minread [default = 1000]\tminimum read length to use in bp - use a
 echo -e "-V, -minoverlap [default = 500]\tminimum read overlaps to allow in bp - CANU's default is 500 bp overlap with a minimum read length of 1000 bp - you might need to try proportionately shorter overlaps than this, especially if your reads are shorter than 1000 bp. For 300-500 bp long reads, I have found that an overlap of 20-50 succeeds at generating good contigs, but going higher results in few or no contigs\n"
 echo -e "-r, -resume [default = false]\trestart a previous run from where it last ended. Useful for resuming interrupted jobs without losing progress\n"
 echo -e "-I, -isoncorrect [default = false]\tPerform additional correction of reads using isONcorrect. For cDNA data\n"
-echo -e "!!! Checking your ASSEMBLY run !!!\n check your slurm.out and slurm.err logs and the canu.out file in your final output folder. OR check what files you have in your temporary and final output folders - a successful run will have corrected reads, trimmed reads, AND contigs.fasta"
+echo -e "!!! Checking your ASSEMBLY run !!!\n check your slurm.out and slurm.err logs and the canu.out file in your final output folder. OR check what files you have in your temporary and final output folders - a successful run will have corrected reads, trimmed reads, AND contigs.fasta\n this script will also generate a series of plots to summarise the taxa present in your dataset and the fate of the reads"
 echo -e "\n!!! IMPORTANT NOTES !!!\n There is some error that causes canu jobs to end early without generating contigs. This usually happens during the final contig generation stage. It is possibly a memory overuse issue, BUT the job might complete if you resume it. If your job has trimmed reads file and corrected reads file, but no contigs, then run it again with --resume. In fact it is probably best to just try and resume all failed canu runs anyway"
 echo -e "\nCANU has a complex set of options, and this script in its original state has certain set parameters for canu, including: -nanopore, 32g minimum memory, use grid. If you wish to change canus' parameters, the only way to do so is to edit your copy of the script itself. Feel free to do so"
 echo -e "\nEXAMPLE OF RUNNING SCRIPT (SLURM sbatch):\n${cyan}\tsbatch --time=12:00:00 --cpus-per-task=12 --mem=64GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-assembly-canu.sh -i /panfs/jay/groups/27/dcschroe/shared/data/gridion_dmckeown/02FEB23DM1/02FEB23DM1/20230202_1617_X1_FAU43675_8c3f2c30/fastq_pass/barcode07 -p 02FEB23DM1_barcode07 -G 5000 -R 200 -V 25${nocolor}\n"
@@ -52,6 +52,10 @@ done
 module purge
 eval "$(conda shell.bash hook)"
 conda activate bioinftools
+
+### scripts
+bioinf_read_check_py=$(which bioinf-read-check.py)
+
 
 ####################### SET AND CHECK VARIABLES/ARGUMENTS #####################################
 mkdir -p ${bioinftmp} ## make tmp data storage in scratch
@@ -122,6 +126,10 @@ for f in $(cat ${TMPDIR}/${project}.bctrimmedreads.list)
 do
     zcat $f >>  ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp
 done
+
+
+###### STORE whole deflines from fastq
+awk '/^@/' ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp > ${TMPDIR}/${project}.originalreads.deflines
 
 ################################################################################################
 ### Perform isONcorrect
@@ -212,7 +220,7 @@ ISJOBRUNNING=$(grep -s "RUNNING" "${TMPDIR}"/"${project}" | wc -l)
 
 while [[ ! $ISJOBRUNNING -le 0 ]]
 do
-  sleep 60
+  sleep 60s
   ISJOBRUNNING=$(grep -s "RUNNING" "${TMPDIR}"/"${project}" | wc -l)
 
 if [[ $ISJOBRUNNING -le 0 ]]; then
@@ -252,25 +260,43 @@ cp ${TMPDIR}/${project}.contigs.layout.readToTig ${OUTDIR}/
 cp ${TMPDIR}/${project}.unassembled.fasta ${OUTDIR}/
 cp ${TMPDIR}/${project}.contigs.fasta ${OUTDIR}/
 cp ${TMPDIR}/${project}.bctrimmedreads.fastq.gz ${OUTDIR}/
+cp ${TMPDIR}/${project}.bctrimmedreads.list ${OUTDIR}/
+cp ${TMPDIR}/${project}.bctrimmedreads.fastq.wholedeflines ${OUTDIR}/
 
 seqkit seq --min-len 200 --min-qual 9 ${TMPDIR}/${project}.bctrimmedreads.fastq.gz > ${OUTDIR}/${project}.MinLen200-minQ9.fastq
 seqkit stat -a -b -T ${OUTDIR}/${project}*.fast* | sed '1,1d' | sed -E -e 's/\.fastq|\.fasta|\.gz//g' -e 's/\t/;/g' | sed "s/${project}./${project};/g" > ${OUTDIR}/${project}.stats.csv
 seqkit stat -a -b -T ${OUTDIR}/${project}.stats.csv | head -1 | sed 's/\t/;/g' | cat - ${OUTDIR}/${project}.stats.csv > ${OUTDIR}/${project}.stats.csv.tmp && mv ${OUTDIR}/${project}.stats.csv.tmp ${OUTDIR}/${project}.stats.csv
 rm -fr ${OUTDIR}/${project}.MinLen200-minQ9.fastq
 
+cd ${OUTDIR}
+
 rm -fr ${TMPDIR}
 
 #### create file that shows which reads got assembled
+# first get a key to convert canu's post-correction names for the reads (readID) to the original read names
 zcat ${OUTDIR}/${project}.correctedReads.fasta.gz | grep ">" | sed -E 's/>(.+) id=(.+)/\1\t\2/g' | awk '{print "s/^"$2"$/"$1"/g"}' > ${OUTDIR}/canuid-origid.tmp
-       
-cut -f 1 ${OUTDIR}/${project}.contigs.layout.readToTig | sed -f ${OUTDIR}/canuid-origid.tmp - \
-| paste - ${OUTDIR}/${project}.contigs.layout.readToTig | cut -f 1,3 | sed '1,1d' > ${OUTDIR}/origid-canutigid.tmp
 
+# now convert the readIDs back to the original IDs so that we can identify them
+cut -f 1 ${OUTDIR}/${project}.contigs.layout.readToTig | sed -f ${OUTDIR}/canuid-origid.tmp - | paste - ${OUTDIR}/${project}.contigs.layout.readToTig | cut -f 1,3 | sed '1,1d' > ${OUTDIR}/origid-canutigid.tmp
+
+# reduce the previous key down to only the lines that are relevant to the contigs assembled
 grep ">" ${OUTDIR}/${project}.contigs.fasta | sed -E 's/>tig([0-9]+).*/\1/g' | sed -E 's/^0+//g' | grep -w -f - ${OUTDIR}/origid-canutigid.tmp > ${OUTDIR}/origid-canutigid-assembled.tmp
 
 grep ">" ${OUTDIR}/${project}.contigs.fasta | sed -E 's/>tig([0-9]+).*/\1/g' | sed -E 's/^(0+)([1-9]+[0-9]*)/\2\ttig\1\2/g' | awk '{print "s/\\t"$1"$/\\t"$2"/g"}' | sed -f - ${OUTDIR}/origid-canutigid-assembled.tmp > ${OUTDIR}/${project}.contigs.layout.readToTig.assembledonly.origNames
 
-rm -f *.tmp
+rm -f *canu*id*.tmp
+
+### put together other info for R scripts
+cut -f 2 ${OUTDIR}/${project}.contigs.layout.readToTig.assembledonly.origNames | sed -E 's/tig0+//g' > tmp.tig.1
+
+sed '1,1d' ${OUTDIR}/${project}.contigs.layout.tigInfo | awk -F "\t" -v N=$(basename ${OUTDIR}/${project}.contigs.layout.tigInfo) '{print "/^"$1"$/ s/^"$1"$/"$2"\\t"$3"\\t"N"/g"}' > tmp.tig.2
+
+sed -f tmp.tig.2 tmp.tig.1 > tmp.tig.3; paste ${OUTDIR}/${project}.contigs.layout.readToTig.assembledonly.origNames tmp.tig.3 | sed -z 's/^/read\tcontig\tcontig_length\tcontig_coverage\tsample\n/g' > ${OUTDIR}/${project}.contigs.layout.readToTig.assembledonly.origNames.lengthcov
+
+rm -f tmp.tig.1 tmp.tig.2 tmp.tig.3
+#### generate plots
+
+python $bioinf_read_check_py -c ${OUTDIR}
 
 exit
 fi
@@ -299,6 +325,8 @@ cp ${TMPDIR}/${project}.contigs.layout.readToTig ${OUTDIR}/
 cp ${TMPDIR}/${project}.unassembled.fasta ${OUTDIR}/
 cp ${TMPDIR}/${project}.contigs.fasta ${OUTDIR}/
 cp ${TMPDIR}/${project}.bctrimmedreads.fastq.gz ${OUTDIR}/
+cp ${TMPDIR}/${project}.bctrimmedreads.list ${OUTDIR}/
+cp ${TMPDIR}/${project}.bctrimmedreads.fastq.wholedeflines ${OUTDIR}/
 
 
 seqkit seq --min-len 200 --min-qual 9 ${TMPDIR}/${project}.bctrimmedreads.fastq.gz > ${OUTDIR}/${project}.MinLen200-minQ9.fastq

@@ -275,12 +275,15 @@ mkdir MAPPING-${project}
 
 #### make BAM file of mapping reads vs contigs and sort and index it
 ### the same concatenate contig fasta must be used for all read files
+## filter out reads less than 200 length and NO secondary mapping (--secondary=no and samtools view -h -F 0x900)
 
 for SETS in $(cat $input)
 do
     READS=$(echo $SETS | cut -d ";" -f 2)
     PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
-    minimap2 -t $THREADS -ax map-ont ${project}.fa $READS | samtools sort -O BAM - > MAPPING-${project}/${PROFILENAME}.bam
+
+    seqkit seq --min-len 200 ${READS} | minimap2 -t $THREADS -ax map-ont --secondary=no ${project}.fa - | samtools view -h -F 0x900 | samtools sort -O BAM - > MAPPING-${project}/${PROFILENAME}.bam
+
     samtools index -@ $THREADS -b MAPPING-${project}/${PROFILENAME}.bam
 done
 
@@ -318,7 +321,7 @@ fi
 
 
 ###### STEP-A8 - Diamond blastx whole contigs [optional]
-if [[ -z "${step}" ]] || [[ "$step" =~ "A8" ]]; then
+if ([[ -z "${step}" ]] || [[ "$step" =~ "A8" ]]) && [[ "$(ls -A ${bioinfdb}/DMND)" ]]; then
     echo -e "${cyan}\t\tRUNNING STEP A8${nocolor}"
 
 cd $OUTDIR
@@ -364,6 +367,8 @@ done
 
 rm -f *.evalue_*.dmnd.blastx.tmp*
 
+if [[ "$(ls -A ${bioinfdb}/BLAST)" ]]; then
+
 ####################### BLAST #############################
 ### IF any blast database files are found in bioinfdb/BLAST, then also do a BLASTx search against those
 
@@ -399,6 +404,8 @@ done
 
 
 rm -f *.evalue_*.ncbi.blastx.tmp*
+
+fi
 
 ##############################################################
 fi
