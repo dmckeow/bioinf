@@ -112,56 +112,7 @@ def get_output_filename(input_file, counter):
 	file_name_without_ext = os.path.splitext(file_name)[0]
 	return f"{counter}___{file_name_without_ext}"
 
-################## original
-def compare_headers_OLD(search_file_pattern):
-	current_directory = os.getcwd()  # Get the current working directory
-
-	# Find the search file 1___ for fasta headers
-	search_file = None
-	for file_name in os.listdir(current_directory):
-		if re.match(search_file_pattern, file_name):
-			search_file = os.path.join(current_directory, file_name)
-			break
-
-	if not search_file:
-		print(f"Search file matching pattern '{search_file_pattern}' not found.")
-		return
-
-	# Read the list of fastaheaders from the search file
-	with open(search_file, 'r') as f:
-		search_words = [line.strip() for line in f]
-
-	# Iterate over each fastaheader list file in the directory
-	for file_name in os.listdir(current_directory):
-		if not re.match(r'^[0-9]+___.*\.fastaheaders$', file_name) and not re.match(r'^1___.*\.fastaheaders$', file_name):
-			continue  # Skip files that do not match the pattern
-		file_path = os.path.join(current_directory, file_name)
-		output_file = f"{file_name}.compare.1.tmp"  # Output file named after the searched file
-		print(f"BEGIN Compare header on '{file_name}'")
-		# Open the file and read its contents
-		with open(file_path, 'r') as f:
-			found_words = []  # List to store found words in the file
-			for line in f:
-				# Check if any word from the search file is found in the line
-				if any(search_word in line for search_word in search_words):
-					# Add the found word to the list
-					found_words.extend([search_word for search_word in search_words if search_word in line])
-
-			# Create a set of found words for faster comparison
-			found_words_set = set(found_words)
-
-		# Write "1" if a header is found, otherwise write "0" 
-		with open(output_file, 'w') as f:
-			for search_word in search_words:
-				if search_word in found_words_set:
-					f.write("1\n")
-				else:
-					f.write("0\n")
-		print(f"Compare header on '{file_name}' DONE")
-
-
-
-####### TESTING!
+####### NEW - faster!
 def compare_headers(search_file_pattern):
 	current_directory = os.getcwd()
 
@@ -178,7 +129,7 @@ def compare_headers(search_file_pattern):
 
 	# Read the list of fasta headers from the search file
 	with open(search_file, 'r') as f:
-		search_words = {line.strip() for line in f}  # Use a set for faster membership tests
+		search_words = [line.strip() for line in f]  # Use a set for faster membership tests ## { to [
 
 	# Compile the regex pattern outside the loop
 	header_file_pattern = re.compile(r'^[0-9]+___.*\.fastaheaders$')
@@ -197,7 +148,7 @@ def compare_headers(search_file_pattern):
 		with open(file_path, 'r') as f:
 			file_content = f.read()
 
-		found_words = {search_word for search_word in search_words if search_word in file_content}
+		found_words = [search_word for search_word in search_words if search_word in file_content] ## { to [
 
 		with open(output_file, 'w') as f:
 			for search_word in search_words:
@@ -211,42 +162,9 @@ def concatenate_files(pattern, output_file):
 		for file_name in file_list:
 			with open(file_name, 'r') as infile:
 				outfile.write(infile.read())
-## original
-def compare_and_append_OLD(file1_path, file_set_pattern):
-	# Read File1
-	with open(file1_path, 'r') as file1:
-		file1_lines = file1.readlines()
-
-	# Find files in the set using the provided pattern
-	file_set = []
-	for file_name in os.listdir('.'):
-		if re.match(file_set_pattern, file_name) and os.path.isfile(file_name):
-			file_set.append(file_name)
-
-	# Compare File1 to each file in the set
-	for file_name in file_set:
-		print(f"BEGIN Compare and append on '{file_name}'")
-		appended_lines = []
-		with open(file_name, 'r') as file:
-			file_lines = file.readlines()
-
-		# Iterate over lines in File1
-		for line in file1_lines:
-			column1, column2 = line.strip().split('\t')
-
-			# Check if column2 of File1 matches column1 in the current file
-			if any(column2 == line.strip().split('\t')[0] for line in file_lines):
-				# Append column1 from the matching line in File1 to the current file
-				appended_lines.append(column1 + '\n')
-
-		appended_content = ''.join(appended_lines)
-
-		with open(file_name, 'a') as file:
-			file.write(appended_content)
-		print(f"Compare and append on '{file_name}' DONE")
 
 ##### NEW - faster!
-def compare_and_append(file1_path, file_set_pattern):
+def compare_and_append(file1_path, file_set_pattern, exclusion_pattern):
 	# Read File1
 	with open(file1_path, 'r') as file1:
 		file1_lines = file1.readlines()
@@ -255,9 +173,11 @@ def compare_and_append(file1_path, file_set_pattern):
 	file_set = []
 	for file_name in os.listdir('.'):
 		if re.match(file_set_pattern, file_name) and os.path.isfile(file_name):
-			file_set.append(file_name)
+			if not re.match(exclusion_pattern, file_name):
+				file_set.append(file_name)
 	# Compile the regex pattern outside the loop
 	file_set_pattern_compiled = re.compile(file_set_pattern)
+	exclusion_pattern_compiled = re.compile(exclusion_pattern)
 
 	# Create a dictionary from file_lines for faster matching
 	file_lines_dict = {}
@@ -285,6 +205,24 @@ def compare_and_append(file1_path, file_set_pattern):
 			file.write(appended_content)
 		print(f"Compare and append on '{file_name}' DONE")
 
+def remove_duplicates(filename):
+	# Read the file and store its lines in a list
+	with open(filename, 'r') as file:
+		lines = file.readlines()
+
+	# Use a set to store unique lines
+	unique_lines = set()
+
+	# Iterate through the lines and add non-duplicate lines to the set
+	for line in lines:
+		unique_lines.add(line)
+
+	# Overwrite the original file with unique lines
+	with open(filename, 'w') as file:
+		file.writelines(sorted(unique_lines))
+
+
+###################################################################
 ## prepare the sequence headers
 process_input_files(input_files)
 
@@ -292,10 +230,20 @@ process_input_files(input_files)
 for f in glob.glob("*.tmp"):
 	os.remove(f)
 
+cur_dir = os.getcwd()
+
+############# remove duplicates from fasta read headers
+###filename_pattern = r'^1___.*\.fastaheaders$'
+
+###for filename in os.listdir(cur_dir):
+###	if re.search(filename_pattern, filename):
+###		file_path = os.path.join(cur_dir, filename)
+###		remove_duplicates(file_path)
+###		print(f"Remove duplicates from '{file_path}' DONE")
 
 ## differ fix
 if differ_file:
-	compare_and_append(differ_file, r'^[0-9]+___.*\.fastaheaders$')
+	compare_and_append(differ_file, r'^[0-9]+___.*\.fastaheaders$', r'^1___.*\.fastaheaders$')
 
 ## compare sequence headers to count read name occurances in the headers of each sequence file
 search_file_pattern = r'^1___.*\.fastaheaders$' # Pattern to match the search file names

@@ -158,8 +158,12 @@ done
 fi
 ################################################################################################
 
-### TRIM the barcodes
+### TRIM the barcodes and remove any reads 50 bp or less
 porechop -t $THREADS -i ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp -o ${TMPDIR}/${project}.bctrimmedreads.fastq
+
+#chopper -t $THREADS
+
+seqkit seq -j $THREADS -m 51 ${TMPDIR}/${project}.bctrimmedreads.fastq > ${TMPDIR}/${project}.bctrimmedreads.tmp && mv ${TMPDIR}/${project}.bctrimmedreads.tmp ${TMPDIR}/${project}.bctrimmedreads.fastq
 pigz -p $THREADS ${TMPDIR}/${project}.bctrimmedreads.fastq
 rm -f ${TMPDIR}/${project}.bctrimmedreads.fastq.tmp
 
@@ -192,12 +196,13 @@ genomeSize="${genomesize}" \
 maxInputCoverage=10000 corOutCoverage=all corMinCoverage=0 corMhapSensitivity=high \
 minReadLength="${minread}" minOverlapLength="${minoverlap}" $trimassemble \
 useGrid=true -nanopore "${TMPDIR}/${project}.bctrimmedreads.fastq.gz" \
+oeaMemory=32g redMemory=32g \
 gridOptionsJobName="canu.${SLURM_JOB_ID}" \
 gridOptions="--time=${SLURM_TIME} --partition ${SLURM_PARTITION}" \
 -maxMemory=$(($SLURM_MEM_PER_NODE -1)) \
 -maxThreads=$THREADS \
 -minMemory=32g \
-saveOverlaps=false purgeOverlaps=aggressive stageDirectory="${bioinftmp}/canu.${SLURM_JOB_ID}" \
+saveOverlaps=false purgeOverlaps=normal stageDirectory="${bioinftmp}/canu.${SLURM_JOB_ID}" \
 onSuccess="sed -i 's/RUNNING/SUCCESS/g'" \
 onFailure="sed -i 's/RUNNING/FAILURE/g'"
 

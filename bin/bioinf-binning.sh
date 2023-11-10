@@ -260,6 +260,27 @@ awk '{print $0"\t0\tNA\tNA\tNA\tNA"}' ${project}_gene_calls.kaiju.*.names | cut 
 
 anvi-import-taxonomy-for-genes -c ${project}.db -i ${project}.kaiju.merge -p kaiju --just-do-it
 
+###################################################################
+### export splits taxonomy, to re-import so that the whole lineage can be viewed
+anvi-export-table --table genes_in_splits ${project}.db
+
+sed '1,1d' genes_in_splits.txt | awk -F "\t" '{print $1"\t"$2}' > tmp && mv tmp genes_in_splits.txt
+
+awk -F "\t" '{print "s/\\t"$2"$/\\t"$8"/g"}' ${project}.kaiju.merge > tmp.fixer
+
+sed -f tmp.fixer genes_in_splits.txt | sort -Vu | uniq -c | sed -E 's/ +([0-9]+) (.+)/\1\t\2/g' | sed -e '/\t$/d' -e '/ NA;/ s/\t/\t!!!/2' | sort -t $'\t' -k 2,2Vr -k 1,1nr | awk -F "\t" '!a[$2]++' | cut -f 2,3 | sed 's/!!!//g' | sed -z 's/^/split\tfull_taxonomy\n/1' > splits_taxonomy.txt
+
+###################################################################
+### run kaiju for all kaiju databases in the bioinfdb CONTIGS
+for f in "$bioinfdb"/KAIJU/*; do
+    kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i ${project}.fa -o ${project}_contigs.kaiju.$(basename $f) -z $THREADS -v
+    sort -t $'\t' -V -k 2,2 ${project}_contigs.kaiju.$(basename $f) -o ${project}_contigs.kaiju.$(basename $f)
+    kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i ${project}_contigs.kaiju.$(basename $f) -o ${project}_contigs.kaiju.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
+done
+
+#### cat all the kaiju hits together, sort by gene call name and then kaiju score in reverse order and keep the first line for each gene, i.e. the hit with the highest score. Kaiju seems to have similar scores even with different database sizes
+awk '{print $0"\t0\tNA\tNA\tNA\tNA"}' ${project}_contigs.kaiju.*.names | cut -f 1-8 | sort -t $'\t' -k 2,2V -k 4,4nr | awk -F "\t" '!a[$2]++' | sed 's/0\tNA\tNA\tNA\tNA//g' > ${project}_contigs.kaiju.merge
+
 ##############################################################
 fi
 ##############################################################
@@ -439,7 +460,7 @@ grep ">" ${project}-SPLITS.fa | sed -E 's/>(.*)/\1\tBin_1/g' > ${project}-SPLITS
                 for f in *.evalue_*.blastx.txt; do
                     anvi-import-misc-data -p profile_${project}-MERGED/PROFILE.db --target-data-table items --just-do-it ${f}
                 done
-
+                anvi-import-misc-data -p profile_${project}-MERGED/PROFILE.db --target-data-table items --just-do-it splits_taxonomy.txt
                 anvi-import-collection -C SPLITS_COLLECTION_ALL -p profile_${project}-MERGED/PROFILE.db -c ${project}.db ${project}-SPLITS-COLLECTION-ALL
             fi
 
@@ -451,6 +472,9 @@ grep ">" ${project}-SPLITS.fa | sed -E 's/>(.*)/\1\tBin_1/g' > ${project}-SPLITS
             do
                 PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
                 a="${OUTDIR}/profile_${PROFILENAME}/PROFILE.db"
+
+                anvi-import-misc-data -p ${OUTDIR}/profile_${PROFILENAME}/PROFILE.db --target-data-table items --just-do-it splits_taxonomy.txt
+
                 anvi-import-collection -C SPLITS_COLLECTION_ALL -p ${OUTDIR}/profile_${PROFILENAME}/PROFILE.db -c ${project}.db ${project}-SPLITS-COLLECTION-ALL
 
             done

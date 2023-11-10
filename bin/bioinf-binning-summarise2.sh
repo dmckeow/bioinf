@@ -60,37 +60,22 @@ conda activate bioinftools
 ########################################################################
 
 tmp="tmp.bioinf_binning_summarise"
-PROJECT_NAME=$(basename $(pwd) -SUMMARY | sed 's/^BINNING_//g')
+PROJECT_NAME=$(basename $(pwd) | sed 's/^BINNING_//g')
+BIN_SUMMARY=$(basename $(pwd) | sed 's/^BINNING_//g' | sed 's/$/-SUMMARY/g')
 
 ####################### THE SCRIPT #####################################
 
 #################################################################
-for BIN in WPF_Bombus_final_no_IOC-SUMMARY/bin_by_bin/Bin_11_Eukaryote*; do
-#################################################################
-
-    cd ${BIN}
-    BIN_NAME=$(basename $(pwd))
-    rm -fr $tmp; mkdir $tmp
-    rm -fr figures; mkdir figures
-
-##### fix the bin contig file if anvio fucked it up by literally splitting the contigs up (it does this for binning without mapping for some reason!)
-    if grep -q partial_[0-9]*_[0-9]* "${BIN_NAME}-contigs.fa"; then
-        sed -E 's/(.+)_split.+/\1/' ${BIN_NAME}-original_split_names.txt | sort -Vu > ${tmp}/tmp.nomap_binfix
-        seqkit grep -n -f ${tmp}/tmp.nomap_binfix ../../../${PROJECT_NAME}.fa > ${BIN_NAME}-contigs.fa
-    fi
 
 ########################################## STEP A1 - prepare mapping plots for the contigs within the bin
     if [[ -z "${step}" ]] || [[ "$step" =~ "A1" ]]; then
 ###########################################
-  
-#### input prep
-    grep ">" ${BIN_NAME}-contigs.fa | sed 's/>//g' | sort -Vu > ${tmp}/tmp.bin_contig_fa_deflines
-    grep ">" ${BIN_NAME}-contigs.fa | sed 's/>//g' | sed -E 's/contig_(.*)_[0-9]+$/\1/g' | sort -Vu > ${tmp}/tmp.bin_contig_fa_deflines_samplesnames
-    grep -w -f ${tmp}/tmp.bin_contig_fa_deflines_samplesnames $input > ${tmp}/tmp.bin_input_filtered
 
+for f in $(cut -f 2 bin_list | sed -E 's/^contig_(.+)_[0-9]+$/\1/g'); do grep -w $f ../input_bioinf_binning1 | sed 's/;/\t/g'; done | paste bin_list - > tmp && mv tmp bin_list
+
+for f in $(cut -f 2 bin_list); do grep -wF $f *_contigs.kaiju.merge ; done | paste bin_list - > tmp && mv tmp bin_list
 
 ########### sample chromosome loci depth
-
 
     for SETS in $(cat ${tmp}/tmp.bin_input_filtered); do
         PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
@@ -103,8 +88,7 @@ for BIN in WPF_Bombus_final_no_IOC-SUMMARY/bin_by_bin/Bin_11_Eukaryote*; do
         PROFILENAME=$(echo $SETS | cut -d ";" -f 3)
         READS=$(echo $SETS | cut -d ";" -f 2)
 
-        seqkit seq --min-len 200 ${READS} | minimap2 -t $THREADS -ax map-ont --secondary=no ${tmp}/tmp.bin_filter_${PROFILENAME}.fa - | samtools sort -O BAM - > ${tmp}/tmp.bin_filter_${PROFILENAME}.bam
-# | samtools view -h -F 0x900 
+        seqkit seq --min-len 200 ${READS} | minimap2 -t $THREADS -ax map-ont --secondary=no ${tmp}/tmp.bin_filter_${PROFILENAME}.fa - | samtools view -h -F 0x900 - | samtools sort -O BAM - > ${tmp}/tmp.bin_filter_${PROFILENAME}.bam
         samtools index -@ $THREADS -b ${tmp}/tmp.bin_filter_${PROFILENAME}.bam
         samtools depth ${tmp}/tmp.bin_filter_${PROFILENAME}.bam | awk -v P="${PROFILENAME}" '{print P"\t"$0}' > ${tmp}/tmp.bin_filter_${PROFILENAME}.depth
     done
@@ -129,6 +113,8 @@ for BIN in WPF_Bombus_final_no_IOC-SUMMARY/bin_by_bin/Bin_11_Eukaryote*; do
 
     Rscript /panfs/jay/groups/27/dcschroe/heske011/scripts/archive/plotRPKM_and_NumReads_4APRIL2023.r
 
+cd ${BIN_SUMMARY}
+cd ..
 
 #####################################
 fi
