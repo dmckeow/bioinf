@@ -345,3 +345,22 @@ fi
 ################################################################################################
 fi
 ################################################################################################
+
+
+
+################################################################################################
+if [[ "$step" == "kaiju" ]]; then
+################################################################################################
+######### run kaiju on the bctrimmed reads (runs separately from any other steps, but must have completed Step A1 )
+
+for f in "$bioinfdb"/KAIJU/*; do
+    kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i ${OUTDIR}/${project}.bctrimmedreads.fastq.gz -o ${OUTDIR}/${project}.bctrimmedreads.fastq.kaiju.$(basename $f) -z $THREADS -v
+    sort -t $'\t' -V -k 2,2 ${OUTDIR}/${project}.bctrimmedreads.fastq.kaiju.$(basename $f) -o ${OUTDIR}/${project}.bctrimmedreads.fastq.kaiju.$(basename $f)
+    kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i ${OUTDIR}/${project}.bctrimmedreads.fastq.kaiju.$(basename $f) -o ${OUTDIR}/${project}.bctrimmedreads.fastq.kaiju.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
+done
+
+awk '{print $0"\t0\t-\t-\t-\t-"}' ${OUTDIR}/${project}.bctrimmedreads.fastq.kaiju.*.names | cut -f 1-8 | sort -t $'\t' -k 2,2V -k 4,4nr | awk -F "\t" '!a[$2]++' > ${OUTDIR}/${project}.bctrimmedreads.fastq.kaiju.merge
+
+################################################################################################
+fi
+################################################################################################
