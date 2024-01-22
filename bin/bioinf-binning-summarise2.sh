@@ -9,6 +9,7 @@ Help()
 echo -e "########### This script is for generating various outputs for checking contigs within a bin. You must have ran anvio and anvi-summarise for this script to work. This script is designed to run on a single bin per job submission and within the folder for each bin. RUN this script within the BINNING_ output folder of your binning run ###########\n"
 echo -e "-r -reads [REQUIRED]\tFile listing the full paths to read fastq files in single column, to map against contigs"
 echo -e "-c -contigs [REQUIRED]\tFile listing the full paths to contig fasta files in single column, keep separate by sample"
+echo -e "-i -input\tinput file used for running anvio binning script"
 echo -e "-s -step\tWhich script steps to run"
 echo -e "-t -threads\tNumber of parallel processes"
 
@@ -421,30 +422,46 @@ sed -i -z 's/^/specific_read_source\treference\tref_start\tref_end\tavg_coverage
 fi
 #####################################
 
-########################################## STEP A9
-if [[ -z "${step}" ]] || [[ "$step" =~ "A9" ]]; then
+
+
+########################################################
+########################################################
+## refining of bins
+########################################## STEP B1
+if [[ "$step" =~ "B1" ]]; then
 ###########################################
 
-####MAXTARGETS=$(seqkit stat -T ${project}-SPLITS.fa | sed '1,1d' | awk -F "\t" '{printf "%0.0f\n", $8/100}')
-##diamond blastx --max-target-seqs $MAXTARGETS --evalue 1e-20 --sensitive -p $THREADS -d $f -q ${project}-SPLITS.fa -f 6 -o $(basename $f .dmnd).evalue_1e-20.dmnd.blastx
+##### list all of the binned contigs files
+### in terminal do:
+## find */bin_by_bin/* -name "*-contigs.fa" > tmp.list.binned_contigs
+## AND then remove contigs not be included in analyses from tmp.list.binned_contigs
 
-DmndDb1="/panfs/jay/groups/27/dcschroe/shared/bioinfdb/DMND/vog.dmnd"
+#### get the binned contigs only
+rm -f tmp.binned_contigs; touch tmp.binned_contigs;
+for f in $(cat tmp.list.binned_contigs | sort -Vu); do
+    cat $f >> tmp.binned_contigs
+done
 
-diamond blastx --range-culling --top 20 -F 15 --evalue 1e-20 --sensitive -p $THREADS -d $DmndDb1 -q $REFFASTA -f 6 -o $(basename $REFFASTA).dmnd.blastx
+############# cluster at 90 % sequence ID over 80 % of length (of the shorter sequence in pairwise comparison) [Zayed et al. 2022, Science 376, 156-162]
+mmseqs easy-cluster tmp.binned_contigs binned_contigs-mmseqs tmp.cluster.binned_contigs --min-seq-id 0.9 -c 0.8 --cov-mode 5
 
 
-### best hit per split subject combo
-awk -F "\t" '!a[$1,$2]++' $(basename $REFFASTA).dmnd.blastx > $(basename $REFFASTA).dmnd.blastx.best
+### give mmseqs clusters group names
+awk -F "\t" '{if($1 == $2) print $1}' binned_contigs-mmseqs_cluster.tsv > binned_contigs-cogs.tsv
+counter=1
+while IFS=$'\t' read -r line; do
+    group=$(printf '%03d' $counter)
+    echo "/^$line\\t/ s/$/\tcog$group/g"
+    ((counter++))
+done < binned_contigs-cogs.tsv | sed -f - binned_contigs-mmseqs_cluster.tsv > tmp && mv tmp binned_contigs-cogs.tsv
 
+cut -f 3 binned_contigs-cogs.tsv | sort -V | uniq -c | sed -E 's/^ +(.+) (.+)/\/\\t\2\$\/ s\/$\/\\t\1\/g/g' | sed -f - binned_contigs-cogs.tsv | cut -f 2-4 > tmp_binned_contigs-cogs.tsv && mv tmp_binned_contigs-cogs.tsv binned_contigs-cogs.tsv
 
-####################### BLAST #############################
-### IF any blast database files are found in bioinfdb/BLAST, then also do a BLASTx search against those
+######## first the bins need to be grouped together, if multiple bins were classified by same taxa
+cut -f 16 ALL.bam.reads_mapped.ALL | sed -E -e 's/(.+_Bin_[0-9]+)(.*)/\2/g' -e 's/^_//g' -e 's/bin_of_specific_contig/superbin_of_specific_contig/g' > tmp.superbins
 
-BlastDb1="/common/bioref/blast/latest/nr"
-blastx -evalue 1e-20 -num_threads $THREADS -db $BlastDb1 -query $REFFASTA -outfmt 6 -out $(basename $REFFASTA).ncbi.blastx
-
-### best hit per split subject combo
- awk -F "\t" '!a[$1,$2]++' $(basename $REFFASTA).ncbi.blastx > $(basename $REFFASTA).ncbi.blastx.best
+echo "check the superbin names below and change as needed in the tmp.superbins file (sed -i is convenient). Contigs within a superbin will be clustered with mmseqs to refine the bins and separate viruses by "
+sort -Vu tmp.superbins
 
 ##############################################################
 fi

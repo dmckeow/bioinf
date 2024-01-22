@@ -18,9 +18,9 @@ library(viridis)
 #library(UpSetR)
 library(ggridges)
 library(ggh4x)
-#library(vegan)
+library(vegan)
 #library(forcats)
-library(hexbin)
+#library(hexbin)
 
 #library(reshape) #
 #library(plotrix) #
@@ -35,12 +35,42 @@ set.seed(1234)
 ################################################
 ############## IMPORT DATASHEETS ###############
 ################################################
+setwd("C:/Users/Dean Mckeown/Downloads")
 
 df <- read.csv("ALL.bam.reads_mapped.ALL", header=TRUE, sep="\t")
+dfmd <- read_sheet("https://docs.google.com/spreadsheets/d/1yDaJm30o-FcLEIP2iyX3JHZAzWVvFCbxjxdfXqnR73w/edit?pli=1#gid=0")
+
+#### data for breadth of coverage
+con <- read.csv("tmp.ALLcontig", header=TRUE, sep="\t")
+sam_con <- read.csv("tmp.ALLstats.list.count0", header=TRUE, sep="\t")
+bas_1 <- read.csv("tmp.ALLstats.list.count1", header=TRUE, sep="\t")
+bas_2 <- read.csv("tmp.ALLstats.list.count2", header=TRUE, sep="\t")
+bas_3 <- read.csv("tmp.ALLstats.list.count3", header=TRUE, sep="\t")
+
+################# CONTIG coverage across length visualisation vs REF genomes
+map_win <- read.csv("ALL.mapping.ref.meanwindowdepth", header=TRUE, sep="\t")
+map_ref <- read.csv("ALL.mapping.ref.idxstats", header=TRUE, sep="\t")
 
 ################################################
 ############## WRANGLE DATASHEETS ##############
 ################################################
+
+##################################### temporary data filter!!!
+############# remove the questionable sequencing run
+df <- df %>% filter(!grepl('060723_mixedlib_PHB_DM', specific_read_source))
+dfmd <- dfmd %>% filter(!grepl('060723_mixedlib_PHB_DM', specific_read_source))
+
+con <- con %>% filter(!grepl('060723_mixedlib_PHB_DM', contig))
+sam_con <- sam_con %>% filter(!grepl('060723_mixedlib_PHB_DM', paste(contig, reads)))
+bas_1 <- bas_1 %>% filter(!grepl('060723_mixedlib_PHB_DM', paste(contig, reads)))
+bas_2 <- bas_2 %>% filter(!grepl('060723_mixedlib_PHB_DM', paste(contig, reads)))
+bas_3 <- bas_3 %>% filter(!grepl('060723_mixedlib_PHB_DM', paste(contig, reads)))
+
+map_win <- map_win %>% filter(!grepl('060723_mixedlib_PHB_DM', specific_read_source))
+map_ref <- map_ref %>% filter(!grepl('060723_mixedlib_PHB_DM', specific_read_source))
+
+#################################################
+#################################################
 
 #### set a function to use for rounding decimal places
 specify_decimal <- function(x, k) as.numeric(trimws(format(round(x, k), nsmall=k)))
@@ -131,8 +161,7 @@ df_con_counts <- df_con_counts %>% distinct()
 ######################################################
 
 ####################
-#### get metadata for spillover and merge with other info
-dfmd <- read_sheet("https://docs.google.com/spreadsheets/d/1yDaJm30o-FcLEIP2iyX3JHZAzWVvFCbxjxdfXqnR73w/edit?pli=1#gid=0")
+#### reshape metadata for spillover and merge with other info
 dfmd <- lapply(dfmd, as.character)
 dfmd <- data.frame(dfmd)
 dfmd$specific_read_source <- gsub("^", "X", dfmd$specific_read_source)
@@ -218,15 +247,22 @@ names(taxa_obj_CSS_HM)[names(taxa_obj_CSS_HM) == 'taxa'] <- 'kaiju_taxonomy'
 taxa_obj_CSS_HM_c <- merge(df_con_counts, taxa_obj_CSS_HM, by.x=c("specific_contig_source","kaiju_taxonomy"), by.y=c("specific_read_source","kaiju_taxonomy"), all.y=TRUE)
 taxa_obj_CSS_HM_c$n_contigs_per_taxa_per_sample <- gsub("[0-9]+", "1", taxa_obj_CSS_HM_c$n_contigs_per_taxa_per_sample)
 
+taxa_obj_CSS_HM_c$seqrun <- gsub("__barcode.*", "", taxa_obj_CSS_HM_c$specific_contig_source)
 
 ###################################################
 ###################################################
 
 ###plot_coverage(df_merged, percent_of_contig_len_with_over_5X_coverage)
-taxa_obj_CSS_HM_c %>% ggplot(aes(x=specific_contig_source, y=kaiju_taxonomy, fill=counts)) + 
+taxa_obj_CSS_HM_c %>%
+filter(!grepl('Bromoviridae', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Secoviridae', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Tymoviridae', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Virgaviridae', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Alphaflexiviridae', kaiju_taxonomy_higher)) %>%
+ggplot(aes(x=specific_contig_source, y=kaiju_taxonomy, fill=counts)) + 
   geom_tile() +
   scale_fill_viridis(option="inferno") +
-  facet_nested(kaiju_taxonomy_higher + kaiju_taxonomy ~ genus, switch = "both", space = "free", scales = "free") +
+  facet_nested(kaiju_taxonomy_higher + kaiju_taxonomy ~  genus, switch = "both", space = "free", scales = "free") +
   theme(axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
   theme(axis.text.y=element_blank()) +
   theme(strip.text.y.left = element_text(angle = 0, hjust = 1)) +
@@ -244,15 +280,6 @@ geom_point(aes(size = n_contigs_per_taxa_per_sample), color = "grey", show.legen
 ###############################
 
 ############# breadth of coverage
-
-## import data from bash script
-
-con <- read.csv("tmp.ALLcontig", header=TRUE, sep="\t")
-sam_con <- read.csv("tmp.ALLstats.list.count0", header=TRUE, sep="\t")
-bas_1 <- read.csv("tmp.ALLstats.list.count1", header=TRUE, sep="\t")
-bas_2 <- read.csv("tmp.ALLstats.list.count2", header=TRUE, sep="\t")
-bas_3 <- read.csv("tmp.ALLstats.list.count3", header=TRUE, sep="\t")
-
 
 df_merged <- merge(con, sam_con, by.x="contig", by.y="contig")
 df_merged <- merge(bas_1, df_merged, by.x=c("reads","contig"), by.y=c("reads","contig"), all.y=TRUE)
@@ -305,7 +332,12 @@ df_merged_cat$kaiju_taxonomy <- factor(df_merged_cat$kaiju_taxonomy, levels = un
 ########## as categoryised coverage thresholds SCATTER
 df_merged_cat %>% 
 filter(!grepl('non_viral', kaiju_taxonomy_higher)) %>% 
-#filter(!grepl('> 5x coverage', cov_category)) %>% 
+filter(!grepl('> 5x coverage', cov_category)) %>% 
+filter(!grepl('Bromoviridae', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Secoviridae', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Tymoviridae', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Virgaviridae', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Alphaflexiviridae', kaiju_taxonomy_higher)) %>%
 ggplot(aes(x=percent_of_contig_len_with_over_nX_coverage, y=kaiju_taxonomy)) +
 #geom_point(size = 3, shape = "|") + 
 geom_jitter(aes(color = contig_length), alpha = 1, shape = "|", size = 5, width = 0.2, height = 0.0) + 
@@ -453,17 +485,42 @@ PCoA_physeq <- physeq %>%
   ord_calc("PCoA")
 
 ### plot PCoA iris
-PCoA_iris <- PCoA_physeq %>% ord_plot_iris(tax_level = "kaiju_taxonomy_higher", ord_plot = "none", anno_colour = "genus")
-  
+PCoA_iris_genus <- PCoA_physeq %>% ord_plot_iris(tax_level = "kaiju_taxonomy_lower", ord_plot = "none", anno_colour = "genus", n_taxa = 11)
+##PCoA_iris_apiary <- PCoA_physeq %>% ord_plot_iris(tax_level = "kaiju_taxonomy_lower", ord_plot = "none", anno_colour = "apiary")
 
-### plot PCoA with marginal plots
-PCoA_marg <- PCoA_physeq %>%
-  ord_plot(color = "genus", size = 2, alpha = 0.7, shape = "apiary") +
-  ggside::geom_xsidedensity(aes(fill = distance), alpha = 0.5) +
-  ggside::geom_ysidedensity(aes(fill = distance), alpha = 0.5) +
+### plot various PCoA plots
+
+
+PCoA_species <- PCoA_physeq %>%
+  ord_plot(color = "species", size = 2, alpha = 0.5) +
+  ggside::geom_xsidedensity(aes(fill = species), alpha = 0.5) +
+  ggside::geom_ysidedensity(aes(fill = species), alpha = 0.5) +
   ggside::theme_ggside_void()
 
-PCoA_marg / PCoA_iris
+
+PCoA_genus_distance_apiary <- PCoA_physeq %>%
+  ord_plot(color = "genus", size = 4, alpha = 0.8, shape = "distance") +
+  ggside::geom_xsidedensity(aes(fill = apiary), alpha = 0.5) +
+  ggside::geom_ysidedensity(aes(fill = apiary), alpha = 0.5) +
+  ggside::theme_ggside_void()
+
+PCoA_flower_genus <- PCoA_physeq %>%
+  ord_plot(color = "flower_genus", size = 2, alpha = 0.5) +
+  ggside::geom_xsidedensity(aes(fill = flower_genus), alpha = 0.5) +
+  ggside::geom_ysidedensity(aes(fill = flower_genus), alpha = 0.5) +
+  ggside::theme_ggside_void()
+
+PCoA_collection_month <- PCoA_physeq %>%
+  ord_plot(color = "collection_month", size = 2, alpha = 0.5) +
+  ggside::geom_xsidedensity(aes(fill = collection_month), alpha = 0.5) +
+  ggside::geom_ysidedensity(aes(fill = collection_month), alpha = 0.5) +
+  ggside::theme_ggside_void()
+
+
+
+
+
+
 
 ###################################################################################
 ################## contig distribution size
@@ -499,7 +556,7 @@ df_con_dfmd <- merge(df_con, dfmd, by.x="specific_contig_source", by.y=0)
 #theme(ggh4x.facet.nestline = element_line(colour = "black"))
 
 ############ BOXPLOT plot for contig length distribution
-
+########### not useful if no spillover
 df_con_dfmd %>%
 filter(!grepl('non_viral', kaiju_taxonomy_higher)) %>%
 filter(!grepl('Bromoviridae', kaiju_taxonomy_higher)) %>%
@@ -507,6 +564,19 @@ filter(!grepl('Secoviridae', kaiju_taxonomy_higher)) %>%
 filter(!grepl('Tymoviridae', kaiju_taxonomy_higher)) %>%
 filter(!grepl('Virgaviridae', kaiju_taxonomy_higher)) %>%
 filter(!grepl('Alphaflexiviridae', kaiju_taxonomy_higher)) %>%
+### remove other viruses with no Bombus Apis comparison
+filter(!grepl('Allermuir', kaiju_taxonomy_higher)) %>%
+filter(!grepl('filamentous_virus', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Chronic_bee_paralysis', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Aparavirus', kaiju_taxonomy)) %>%
+filter(!grepl('Cripavirus', kaiju_taxonomy)) %>%
+filter(!grepl('Culex', kaiju_taxonomy)) %>%
+filter(!grepl('Hubei', kaiju_taxonomy)) %>%
+filter(!grepl('Orthomyxo', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Phasma', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Rhabdovir', kaiju_taxonomy_higher)) %>%
+filter(!grepl('Sinai_virus_3', kaiju_taxonomy)) %>%
+filter(!grepl('Sinai_virus_6', kaiju_taxonomy)) %>%
 ggplot(aes(x=specific_contig_length, y=genus, fill=genus)) +
 geom_boxplot(outlier.shape = NA) + 
 facet_nested(kaiju_taxonomy_higher + kaiju_taxonomy ~ ., switch = "y", space = "free_y") +
@@ -533,9 +603,6 @@ theme(panel.grid.major.x = element_line(color = "grey", linetype = 1))
 
 ################# CONTIG coverage across length visualisation vs REF genomes
 
-map_win <- read.csv("ALL.mapping.ref.meanwindowdepth", header=TRUE, sep="\t")
-map_ref <- read.csv("ALL.mapping.ref.idxstats", header=TRUE, sep="\t")
-
 map <- merge(map_win, map_ref, by.x=c("specific_read_source", "reference"), by.y=c("specific_read_source", "reference"))
 
 ### add metadata
@@ -559,9 +626,6 @@ map <- map %>% mutate(RPKM_log = log10(RPKM + 1))
 
 #### average by genus, species, collection_month, collection_year, apiary, distance
 
-## need to remove totals of 0, because they are not appropriate to include when averaging per taxa?
-###df_r_av <- subset(df_r_av, df_r_av$n_per_taxa_per_sample > 0)
-
 map <- transform(map, avg_coverage_by_window_AVG = ave(avg_coverage_by_window, ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, FUN = ave))
 
 map <- transform(map, RPKM_AVG = ave(RPKM, ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, FUN = ave))
@@ -584,22 +648,22 @@ map$seqrun <- gsub("__barcode.*", "", map$specific_read_source)
 #####################################################
 
 ########## as categoryised coverage thresholds
-map %>%
-filter(grepl('NC_002066.1___Sacbrood_virus', reference)) %>%
-distinct(ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, .keep_all = TRUE) %>% 
-ggplot() +
-geom_line(aes(x=ref_start, y=RPKM_AVG_log, group=AVG_grouping, color=genus))
+#map %>%
+#filter(grepl('NC_002066.1___Sacbrood_virus', reference)) %>%
+#distinct(ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, .keep_all = TRUE) %>% 
+#ggplot() +
+#geom_line(aes(x=ref_start, y=RPKM_AVG_log, group=AVG_grouping, color=genus))
 #geom_area(aes(x=ref_start, y=RPKM_log, group=genus, fill=genus), position = 'stack')
 
 
 ###for jsut as a heatmap
 map %>% 
-#filter(grepl('LSV', reference)) %>%
+filter(grepl('Sacbrood|Deformed|Varroa|Black|LSV_1', reference)) %>%
 distinct(ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, .keep_all = TRUE) %>% 
 ggplot(aes(x=ref_start, y=specific_read_source, fill=RPKM_log)) + 
   geom_tile() +
   scale_fill_viridis(option="inferno") +
-  facet_nested(genus + seqrun ~ reference, switch = "both", space = "free", scales = "free") +
+  facet_nested(genus ~ reference, switch = "both", space = "free", scales = "free") +
   theme(axis.text.y=element_blank()) +
   theme(strip.text.y.left = element_text(angle = 0, hjust = 1)) +
 theme(strip.background.y = element_blank()) +
@@ -609,3 +673,50 @@ theme(panel.spacing.x=unit(0.2, "lines")) +
 theme(panel.spacing.y=unit(0.1, "lines")) +
 theme(strip.placement = "outside") +
 theme(ggh4x.facet.nestline = element_line(colour = "black"))
+
+
+
+
+########################################################################################
+########################################################################################
+
+##taxa_obj_CSS_PAN <- as_tibble(taxa_obj_CSS_PCA, rownames="rowname") %>%
+  ##as.data.frame() %>%
+  ##column_to_rownames("rowname") %>%
+  ##t()
+
+dfmd_PAN <- dfmd[rownames(dfmd) %in% rownames(t(taxa_obj_CSS_PCA)), ]
+
+### distance matrix 
+taxa_obj_CSS_PCA_dist <- vegdist(t(taxa_obj_CSS_PCA), method="bray")
+
+#### create blocks for variable within whcih are repeated measures
+#dfmd_PAN$block <- paste0(dfmd_PAN$collection_month, dfmd_PAN$apiary, dfmd_PAN$distance)
+#perms <- with(dfmd_PAN, how(nperm = 99, blocks = block))
+#permanovaX <- adonis2(t(taxa_obj_CSS_PCA) ~ block * genus, data = dfmd_PAN, method="bray", permutations = perms)
+
+
+#### adonis2 only gives the summary of PCA
+#permanova2 <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * distance * apiary, data = dfmd_PAN, method="bray")
+#permanova3 <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * distance * apiary * flower_genus * collection_month %in% collection_year, data = dfmd_PAN, method="bray")
+
+### the soon depreciated adonis gives an object containing other info
+permanova <- adonis(t(taxa_obj_CSS_PCA) ~ genus, data = dfmd_PAN, method="bray")
+#permanova <- adonis(t(taxa_obj_CSS_PCA) ~ genus + distance * apiary * flower_genus * collection_month %in% collection_year, data = dfmd_PAN, method="bray")
+
+# Note the assumption of similar multivariate spread among the groups
+# ie. analogous to variance homogeneity
+# Here the groups have signif. different spreads and
+# permanova result may be potentially explained by that.
+anova <- anova(betadisper(taxa_obj_CSS_PCA_dist, dfmd_PAN$genus))
+
+##### plto factor R2 coefficients by - works without output of adonis, but not adonis2
+coef <- coefficients(permanova)["genus1",]
+top.coef <- coef[rev(order(abs(coef)))[1:50]]
+par(mar = c(3, 14, 2, 1))
+barplot(sort(top.coef), horiz = T, las = 1, main = "Top taxa, PERMANOVA R2, bee genus")
+
+
+
+
+
