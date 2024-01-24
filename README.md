@@ -3,81 +3,32 @@
 * Main purpose is for common bioinformatics protocols including assembly and binning of sequence data, phylogeny, and other genomic analyses.
 * Currently the pipeline is focused on using Oxford Nanopore Sequencing data, and on viral metagenomics
 
-## INSTALLATION STEP 0 - get CONDA and MAMBA
-* Before you begin, you need [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html). Even if conda is already installed through your server system, **it will probably be better if you install your own copy**
-* In addition to conda, you should also install [mamba](https://mamba.readthedocs.io/en/latest/installation.html). This allows you you to use `mamba install` instead of `conda install` which **much faster**
-
-## INSTALLATION STEP 1 - get anvi'o
+## INSTALLATION STEP 1 - install ANVI'O
 * Anvi'o is the tool we will use for binning - the developers are the Merenlab, and they have very good guides for [anvi'o](https://anvio.org/).
-* First thing is to create a conda environment with Anvi'o 7.1 installed within it
-* Please follow the exact instructions for [installing anvio](https://anvio.org/install/), BUT with one **IMPORTANT EXCEPTION** - name your environment `bioinftools` instead of `anvio-7.1`. The pipeline will look for a conda environment named bioinftools:
-```shell
-## INSTEAD of:
-conda create -y --name anvio-7.1 python=3.6
- ## do:
-conda create -y --name bioinftools python=3.6
-```
-* `The anvio page uses conda install, but you should use mamba install instead`
-* If you have a problem with installation, the answer is probably on the anvi'o [installation guide](https://anvio.org/install/)
+* First thing is to create a conda environment with Anvi'o 8 installed within it
+* Please follow the exact instructions for [installing anvio](https://anvio.org/install/linux/stable/), BUT with one **IMPORTANT EXCEPTION** - name your environment `bioinftools` instead of `anvio-8`. The pipeline will look for a conda environment named bioinftools:
 * IMPORTANT - during your installation, be sure to follow their step that details how to setup key resources for anvi'o - currently this is under: (4.1) Setup [key resources](https://anvio.org/install/)
-
-* Here is a copy of the anvi'o packages listed on the anvi'o installation page, but with `mamba install` and with specific verions for all packages. This for convenience sake, and also in case any package conflicts occur due to the wrong package version being installed
-```shell
-mamba install -y -c bioconda "sqlite>=3.31.1"
-mamba install -y -c bioconda prodigal=2.6.3
-mamba install -y -c bioconda mcl=14.137
-mamba install -y -c bioconda muscle=3.8.1551
-mamba install -y -c bioconda hmmer=3.3.2
-mamba install -y -c bioconda diamond=2.1.6
-mamba install -y -c bioconda blast=2.5.0
-mamba install -y -c bioconda megahit=1.2.9
-mamba install -y -c bioconda spades=3.15.5
-mamba install -y -c bioconda bowtie2 tbb=2019.8
-mamba install -y -c bioconda bwa=0.7.17
-mamba install -y -c bioconda samtools=1.9
-mamba install -y -c bioconda centrifuge=1.0.4_beta
-mamba install -y -c bioconda trimal=1.4.1
-mamba install -y -c bioconda iqtree=2.2.2.3
-mamba install -y -c bioconda trnascan-se=2.0.9
-mamba install -y -c bioconda r-base=4.2.2
-mamba install -y -c bioconda r-stringi=1.7.12
-mamba install -y -c bioconda r-tidyverse=2.0.0
-mamba install -y -c bioconda r-magrittr=2.0.3
-mamba install -y -c bioconda r-optparse=1.7.3
-mamba install -y -c bioconda bioconductor-qvalue=2.30.0
-mamba install -y -c bioconda fasttree=2.1.11
-mamba install -y -c bioconda vmatch=2.3.0
-
-# this last one may cause some issues. if it doesn't install,
-# don't worry, you will still be fine:
-mamba install -y -c bioconda fastani=1.33
-```
 
 ## INSTALLATION STEP 2 - get other tools and packages
 * Copy the following into your terminal:
 ```shell
 conda activate bioinftools ## your conda environment must be active to use it
 
-mamba install -y -c bioconda kaiju=1.9.2
-mamba install -y -c bioconda seqkit=2.4
-mamba install -y -c bioconda hyphy=2.5
-mamba install -y -c bioconda minimap2=2.2
-mamba install -y -c bioconda porechop=0.2
+mamba install -y -c bioconda kaiju
+mamba install -y -c bioconda seqkit
+mamba install -y -c bioconda hyphy
+mamba install -y -c bioconda minimap2
+mamba install -y -c bioconda porechop
 mamba install -y -c conda-forge pigz
-mamba install -y -c bioconda taxonkit=0.14
-mamba install -y -c bioconda mafft=7.5
+mamba install -y -c bioconda taxonkit
+mamba install -y -c bioconda mafft
 mamba install -y -c bioconda cd-hit
 mamba install -y -c conda-forge -c bioconda mmseqs2
+mamba install -y bioconda::canu
 
 ## R packages
 mamba install -y -c bioconda r-svglite
 mamba install -y -c conda-forge r-reshape
-
-### packages for isONcorrect:
-pip install isONcorrect
-mamba install -c bioconda spoa
-pip install isONclust
-mamba install -c bioconda "pychopper>=2.0"
 ```
 * Install packages within R environment
 ```shell
@@ -98,19 +49,12 @@ install.packages("treemapify")
 install.packages("viridisLite")
 install.packages("viridis")
 ```
-* Sadly, installing canu through conda can sometimes not work - so install version 2.2 of [CANU](https://github.com/marbl/canu ) by `downloading a binary release as detailed in the CANU git`
-* Once it is installed you must add canu to your path as follows:
-```shell
-sed -i -z "s|$|\nexport PATH=\"path\/to\/your\/canu-2.2\/bin:\$PATH\"\n|g" $HOME/.bashrc ## replace path\/to\/your\/ with your actual path - you MUST use \/ instead of / in your path
-source $HOME/.bashrc
-canu --help ## if you see canu's help message then you are good to go
-```
-* Alternatively, you can add canu to your path by just copy pasting `export PATH="path/to/your/canu-2.2/bin:$PATH"` into your ~/.bashrc using an editor like vim or nano, save the file changes and then do `source ~/.bashrc`
-* If this absolutely isn't working you can also try to install canu using conda
+* Possible issue with CANU and conda - if it does not work, then install as binary, as detailed [here](https://github.com/marbl/canu )
+* Once it is installed you must add canu to your path by adding `export PATH="path/to/your/canu-2.2/bin:$PATH"` to your ~/.bashrc using an editor like vim or nano, save the file changes and then do `source ~/.bashrc`
 
 ## INSTALLATION STEP 3 - download and setup bioinf pipelines, scripts, and databases
 `FOR a NEW SETUP and bioinfdb: run 3a. AND 3b.`
-`If you just wish to relocate your databse or update your scripts, then run 3b. ONLY`
+`If your system already has the databases setup (i.e. someone has already ran step 3a.), then run 3b. ONLY`
 
 ### 3a. For a fresh setup (creates new databases from scratch)
 * If you are creating a fresh setup for bioinf, copy the following, but replace /path/to/temporary_directory with your system's path to the temporary_directory storage:
@@ -125,7 +69,7 @@ source ~/.bashrc ## OR logout and log back in
 ```
 * Note that this example is for submitting to a SLURM cluster - the parameters before bioinf-setup.sh are SLURM and system specific - change them according to your own requirements.
 
-### 3b. Create a directory that links to the database directories (links to an existing bioinfdb)
+### 3b. Create a directory that links to a preexisting database
 * If you have access to a bioinfdb that has already been setup, then you should just run 3b - it will simply configure your version of bioinf to run using the pre-existing setup. This will complete within minutes and save 100s in GB of storage space.
 * Creates symbolic links to pre-existing databases. This allows us to share a core bioinfdb that multiple users can use. Each user can then add/remove databases from their own database without affecting anyone elses database setup (EXCEPT that deleting files in the original database will remove them from all linked db copies)
 * Copy the following code, but with your own paths:
@@ -136,7 +80,6 @@ bioinf/bin/bioinf-setup.sh -t /path/to/temporary_storage -d /where/to/create/you
 source ~/.bashrc ## OR logout and log back in
 ```
 * Temporary storage is specified because some scripts such as bioinf-assembly-canu.sh will generate quite large temporary files - so you should choose somewhere with enough capacity to handle 10s to 100s of GB of data. If you are on a SLURM cluster, use the scratch directory!
-* This version of the setup process can be run locally - no SLURM sbatch required
 
 ## And that is the installation and setup done!
 
