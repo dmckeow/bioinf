@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --time=96:00:00
+#SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=600GB
+#SBATCH --mem=300GB
 #SBATCH --partition ag2tb
 #SBATCH -o slurm.%N.%j.out
 #SBATCH -e slurm.%N.%j.err

@@ -14,13 +14,13 @@ echo -e "${green}########### OPTIONAL arguments ###########${nocolor}\n"
 echo -e "-s, -step\tWhich script steps to run. Steps available:\n"
 awk '/^###### STEP-/ {print "\t\t"$0}' $(which bioinf-assembly-canu.sh)
 echo -e "\n-G, -genomesize [default = 10000]\texpected genome size in bp - use the smallest genome size expected (going too small is fine, but a genome size that is too big may cause assembly failure)\n"
-echo -e "-R, -minread [default = 1000]\tminimum read length to use in bp - use a read length that is short enough so that CANU doesn't exclude too much of your data\n"
+echo -e "-R, -minread [default = 1000]\tminimum read length to use in bp\n"
 echo -e "-V, -minoverlap [default = 500]\tminimum read overlaps to allow in bp - CANU's default is 500 bp overlap with a minimum read length of 1000 bp - you might need to try proportionately shorter overlaps than this, especially if your reads are shorter than 1000 bp. For 300-500 bp long reads, I have found that an overlap of 20-50 succeeds at generating good contigs, but going higher results in few or no contigs\n"
-echo -e "-r, -resume [default = false]\trestart a previous run from where it last ended. Useful for resuming interrupted jobs without losing progress\n"
-echo -e "-I, -isoncorrect [default = false]\tPerform additional correction of reads using isONcorrect. For cDNA data\n"
-echo -e "!!! Checking your ASSEMBLY run !!!\n check your slurm.out and slurm.err logs and the canu.out file in your final output folder. OR check what files you have in your temporary and final output folders - a successful run will have corrected reads, trimmed reads, AND contigs.fasta\n this script will also generate a series of plots to summarise the taxa present in your dataset and the fate of the reads"
-echo -e "\n!!! IMPORTANT NOTES !!!\n There is some error that causes canu jobs to end early without generating contigs. This usually happens during the final contig generation stage. It is possibly a memory overuse issue, BUT the job might complete if you resume it. If your job has trimmed reads file and corrected reads file, but no contigs, then run it again with --resume. In fact it is probably best to just try and resume all failed canu runs anyway"
-echo -e "\nCANU has a complex set of options, and this script in its original state has certain set parameters for canu, including: -nanopore, 32g minimum memory, use grid. If you wish to change canus' parameters, the only way to do so is to edit your copy of the script itself. Feel free to do so"
+echo -e "-r, resume [any option to restrict canu to a specific stage - see canu -h]\tif -r is included, the initial step before running canu is skipped - only use if your previous attempt generated canu output files. Optionally, you can also provide this flag a parameter from canu's options to restart the canu at a specific step - see canu -h. For example -r -assemble would resume canu beginning with assembly\n"
+echo -e "-I, isoncorrect\tIf -I is included, then job will perform alternate correction of reads using isONcorrect. CANU correction will also be skipped. For cDNA data\n"
+echo -e "-P, plots\tIf -P is included, then job wil generate plots visualising the identity and assembly fate of reads. Will significantly increase run time"
+echo -e "!!! Checking your ASSEMBLY run !!!\n check your slurm.out and slurm.err logs and the canu.out file in your final output folder. OR check what files you have in your temporary and final output folders - a successful run will have corrected reads, trimmed reads, AND contigs.fasta"
+echo -e "\nCANU has a complex set of options, and this script in its original state has certain set parameters for canu. To edit these parameters, try copying this script and editing your copy directly"
 echo -e "\nEXAMPLE OF RUNNING SCRIPT (SLURM sbatch):\n${cyan}\tsbatch --time=12:00:00 --cpus-per-task=12 --mem=64GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err bioinf-assembly-canu.sh -i /panfs/jay/groups/27/dcschroe/shared/data/gridion_dmckeown/02FEB23DM1/02FEB23DM1/20230202_1617_X1_FAU43675_8c3f2c30/fastq_pass/barcode07 -p 02FEB23DM1_barcode07 -G 5000 -R 200 -V 25${nocolor}\n"
 echo -e "-h, --help\tshow this help message and exit\n"
 }
@@ -28,9 +28,10 @@ echo -e "-h, --help\tshow this help message and exit\n"
 ### set euclidean options to default setting here
 resume="false"
 isoncorrect="false"
+plots="false"
 ###
 
-while getopts i:p:s:G:R:V:Irh option
+while getopts i:p:s:G:R:V:Ir:Ph option
 do 
     case "${option}" in
         i)input=${OPTARG};;
@@ -40,13 +41,20 @@ do
     G)genomesize=${OPTARG};;
     R)minread=${OPTARG};;
     V)minoverlap=${OPTARG};;
-    r)resume="true";;
+    r)resume=${OPTARG};;
     I)isoncorrect="true";;
+    P)plots="true";;
     h)Help; exit;;
     esac
 done
 
+if [[ -z "${resume}" ]] && [[ ! "$resume" == "false" ]]; then
+    echo -e "\nRESUMING, skipping adapter trimming, resuming at wherever last CANU run ended\n"
+fi
 
+if [[ ! -z "${resume}" ]] && [[ ! "$resume" == "false" ]]; then
+    echo -e "\nRESUMING, restricting to CANU step(s) as specified by: $resume\n"
+fi
 ####################### SOFTWARE #####################################
 ### LOAD software available via shared environment on server:
 module purge
@@ -75,12 +83,17 @@ if [[ -z "${project}" ]]; then echo -e "${red}-p, --project missing"; Help; exit
 if [[ -z "${genomesize}" ]]; then genomesize="10000"; echo -e "${green}Bioinf-assembly-canu is using default genome length 10000 bp ${nocolor}"; fi
 if [[ -z "${minread}" ]]; then minread="1000"; echo -e "${green}Bioinf-assembly-canu is using default read length 1000 bp ${nocolor}"; fi
 if [[ -z "${minoverlap}" ]]; then minoverlap="500"; echo -e "${green}Bioinf-assembly-canu is using default read overlap length 500 bp ${nocolor}"; fi
+if [[ -z "${resume}" ]]; then resume=""; fi
 
 ### THREADS
 
 if [[ ! -z "${SLURM_CPUS_PER_TASK}" ]]; then THREADS="${SLURM_CPUS_PER_TASK}"; echo -e "${green}Using threads set by SLURM_CPUS_PER_TASK:${nocolor}"; fi
 if [[ -z "${SLURM_CPUS_PER_TASK}" ]]; then THREADS="4"; echo -e "${green}No SLURM_CPUS_PER_TASK or --threads set, using default threads:${nocolor}"; fi
 echo -e "\t${THREADS} threads"
+
+SLURM_MEM_PER_NODE_gb=$((($SLURM_MEM_PER_NODE / 1000) -1))
+SLURM_MEM_PER_CPU_gb=$(((($SLURM_MEM_PER_NODE / $THREADS) / 1000) -1))
+
 
 #######
 if [[ -z $(conda env list | grep "bioinftools") ]]; then echo "NO conda environment for bioinftools found - see README"; else echo "conda environment for bioinftools FOUND"; fi
@@ -185,23 +198,32 @@ cd ${TMPDIR}
 rm -f "${TMPDIR}"/"${project}"
 echo "RUNNING" > "${TMPDIR}"/"${project}"
 
+ioc_restrict=""
 if [[ "$isoncorrect" == "true" ]]; then
-    trimassemble="-trim-assemble"
-elif [[ "$isoncorrect" == "false" ]]; then
-    trimassemble=""
+    ioc_restrict="-trim-assemble"
+fi
+
+restrict=""
+if [[ ! "$resume" == "false" ]]; then
+    restrict="$resume"
 fi
 
 canu -p "${project}" -d "${TMPDIR}" \
 genomeSize="${genomesize}" \
 maxInputCoverage=10000 corOutCoverage=all corMinCoverage=0 corMhapSensitivity=high \
-minReadLength="${minread}" minOverlapLength="${minoverlap}" $trimassemble \
+minReadLength="${minread}" minOverlapLength="${minoverlap}" \
+$ioc_restrict $restrict \
 useGrid=true -nanopore "${TMPDIR}/${project}.bctrimmedreads.fastq.gz" \
-oeaMemory=32g redMemory=32g \
+merylMemory=$SLURM_MEM_PER_NODE_gb merylThreads=$THREADS \
+oeaMemory=$SLURM_MEM_PER_NODE_gb oeaThreads=$THREADS \
+redMemory=$SLURM_MEM_PER_NODE_gb redThreads=$THREADS \
+batMemory=$SLURM_MEM_PER_NODE_gb batThreads=$THREADS \
+cnsMemory=$SLURM_MEM_PER_NODE_gb cnsThreads=$THREADS \
 gridOptionsJobName="canu.${SLURM_JOB_ID}" \
 gridOptions="--time=${SLURM_TIME} --partition ${SLURM_PARTITION}" \
--maxMemory=$(($SLURM_MEM_PER_NODE -1)) \
+-maxMemory=$SLURM_MEM_PER_NODE_gb \
 -maxThreads=$THREADS \
--minMemory=32g \
+-minMemory=$SLURM_MEM_PER_CPU_gb \
 saveOverlaps=false purgeOverlaps=normal stageDirectory="${bioinftmp}/canu.${SLURM_JOB_ID}" \
 onSuccess="sed -i 's/RUNNING/SUCCESS/g'" \
 onFailure="sed -i 's/RUNNING/FAILURE/g'"
@@ -301,7 +323,9 @@ sed -f tmp.tig.2 tmp.tig.1 > tmp.tig.3; paste ${OUTDIR}/${project}.contigs.layou
 rm -f tmp.tig.1 tmp.tig.2 tmp.tig.3
 #### generate plots
 
+if [[ "$plots" == "true" ]]; then
 python $bioinf_read_check_py -c ${OUTDIR}
+fi
 
 exit
 fi
@@ -310,7 +334,7 @@ fi
 JOBFAIL=$(grep -s "FAILURE" "${TMPDIR}"/"${project}" | wc -l)
 if [[ ! $JOBFAIL -le 0 ]]; then
 
-echo -e "\nYOUR JOB HAS FAILED. \nTO RESTART A FAILED JOB, RESTART WITH -s A2\nIF STEPS 1 AND/OR 2 (SEE BELOW) FAILED, THEN THERE IS PROBABLY SOMETHING WRONG WITH YOUR DATA OR INPUT COMMAND OR PARAMETERS. IF STEPS 3 AND/OR 4 FAILED, THEN TRY RESTARTING THE JOB WITH -s A2" >> ${TMPDIR}/canu.out
+echo -e "\nYOUR JOB HAS FAILED. \nTO RESTART A FAILED JOB, RESTART WITH -r\nIF STEPS 1 AND/OR 2 (SEE BELOW) FAILED, THEN THERE IS PROBABLY SOMETHING WRONG WITH YOUR DATA OR INPUT COMMAND OR PARAMETERS. IF STEPS 3 AND/OR 4 FAILED, THEN TRY RESTARTING THE JOB WITH -r" >> ${TMPDIR}/canu.out
 
 ##### stages of completion check
 REA=$(ls ${TMPDIR} | grep -s "${project}.bctrimmedreads.fastq.gz" - | wc -l | sed -e 's/0/FAILED/g' -e 's/1/SUCCEEDED/g')

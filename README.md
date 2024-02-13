@@ -25,6 +25,7 @@ mamba install -y -c bioconda mafft
 mamba install -y -c bioconda cd-hit
 mamba install -y -c conda-forge -c bioconda mmseqs2
 mamba install -y bioconda::canu
+mamba install bioconda::bedtools
 
 ## R packages
 mamba install -y -c bioconda r-svglite
