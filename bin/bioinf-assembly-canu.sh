@@ -16,7 +16,7 @@ awk '/^###### STEP-/ {print "\t\t"$0}' $(which bioinf-assembly-canu.sh)
 echo -e "\n-G, -genomesize [default = 10000]\texpected genome size in bp - use the smallest genome size expected (going too small is fine, but a genome size that is too big may cause assembly failure)\n"
 echo -e "-R, -minread [default = 1000]\tminimum read length to use in bp\n"
 echo -e "-V, -minoverlap [default = 500]\tminimum read overlaps to allow in bp - CANU's default is 500 bp overlap with a minimum read length of 1000 bp - you might need to try proportionately shorter overlaps than this, especially if your reads are shorter than 1000 bp. For 300-500 bp long reads, I have found that an overlap of 20-50 succeeds at generating good contigs, but going higher results in few or no contigs\n"
-echo -e "-r, resume [any option to restrict canu to a specific stage - see canu -h]\tif -r is included, the initial step before running canu is skipped - only use if your previous attempt generated canu output files. Optionally, you can also provide this flag a parameter from canu's options to restart the canu at a specific step - see canu -h. For example -r -assemble would resume canu beginning with assembly\n"
+echo -e "-r, resume\tif -r is included, the initial step before running canu is skipped - only use if your previous attempt generated canu output files\n"
 echo -e "-I, isoncorrect\tIf -I is included, then job will perform alternate correction of reads using isONcorrect. CANU correction will also be skipped. For cDNA data\n"
 echo -e "-P, plots\tIf -P is included, then job wil generate plots visualising the identity and assembly fate of reads. Will significantly increase run time"
 echo -e "!!! Checking your ASSEMBLY run !!!\n check your slurm.out and slurm.err logs and the canu.out file in your final output folder. OR check what files you have in your temporary and final output folders - a successful run will have corrected reads, trimmed reads, AND contigs.fasta"
@@ -31,7 +31,7 @@ isoncorrect="false"
 plots="false"
 ###
 
-while getopts i:p:s:G:R:V:Ir:Ph option
+while getopts i:p:s:G:R:V:IrPh option
 do 
     case "${option}" in
         i)input=${OPTARG};;
@@ -41,20 +41,19 @@ do
     G)genomesize=${OPTARG};;
     R)minread=${OPTARG};;
     V)minoverlap=${OPTARG};;
-    r)resume=${OPTARG};;
+    r)resume="true";;
     I)isoncorrect="true";;
     P)plots="true";;
     h)Help; exit;;
     esac
 done
 
-if [[ -z "${resume}" ]] && [[ ! "$resume" == "false" ]]; then
-    echo -e "\nRESUMING, skipping adapter trimming, resuming at wherever last CANU run ended\n"
+if [[ ${resume}="false" ]]
+    then echo "RUNNING a fresh assembly attempt"
+elif [[ ${resume}="true" ]]
+    then echo -e "RESUMING previous run at wherever CANU got to last time"
 fi
 
-if [[ ! -z "${resume}" ]] && [[ ! "$resume" == "false" ]]; then
-    echo -e "\nRESUMING, restricting to CANU step(s) as specified by: $resume\n"
-fi
 ####################### SOFTWARE #####################################
 ### LOAD software available via shared environment on server:
 module purge
@@ -83,7 +82,6 @@ if [[ -z "${project}" ]]; then echo -e "${red}-p, --project missing"; Help; exit
 if [[ -z "${genomesize}" ]]; then genomesize="10000"; echo -e "${green}Bioinf-assembly-canu is using default genome length 10000 bp ${nocolor}"; fi
 if [[ -z "${minread}" ]]; then minread="1000"; echo -e "${green}Bioinf-assembly-canu is using default read length 1000 bp ${nocolor}"; fi
 if [[ -z "${minoverlap}" ]]; then minoverlap="500"; echo -e "${green}Bioinf-assembly-canu is using default read overlap length 500 bp ${nocolor}"; fi
-if [[ -z "${resume}" ]]; then resume=""; fi
 
 ### THREADS
 
@@ -110,7 +108,7 @@ echo -e "${green}bioinf temporary working space is set to '$bioinftmp' ${nocolor
 ###### STEP-A1 locate read files, trim ONT barcodes with porechop, summarise read stats
 
 ################################################################################################
-if [[ -z "${step}" ]] || [[ "$step" == "A1" ]] && [[ "$resume" == "false" ]]; then
+if ([[ -z "${step}" ]] || [[ "$step" == "A1" ]]) && [[ "$resume" == "false" ]]; then
 ################################################################################################
 
 ### single/multiple fastq.gz file(s) OR single/multiple directories containing fastq.gz file(s)
@@ -203,16 +201,11 @@ if [[ "$isoncorrect" == "true" ]]; then
     ioc_restrict="-trim-assemble"
 fi
 
-restrict=""
-if [[ ! "$resume" == "false" ]]; then
-    restrict="$resume"
-fi
-
 canu -p "${project}" -d "${TMPDIR}" \
 genomeSize="${genomesize}" \
 maxInputCoverage=10000 corOutCoverage=all corMinCoverage=0 corMhapSensitivity=high \
 minReadLength="${minread}" minOverlapLength="${minoverlap}" \
-$ioc_restrict $restrict \
+$ioc_restrict \
 useGrid=true -nanopore "${TMPDIR}/${project}.bctrimmedreads.fastq.gz" \
 merylMemory=$SLURM_MEM_PER_NODE_gb merylThreads=$THREADS \
 oeaMemory=$SLURM_MEM_PER_NODE_gb oeaThreads=$THREADS \
