@@ -1,0 +1,37 @@
+#!/bin/bash
+#$ -S /bin/bash
+#$ -V
+#$ -cwd
+## Queue settings (can be set at runtime in the qsub submition line)
+#$ -q short.q
+## [Optional] to ask between 1 and 4 processors
+#$ -pe thread 4
+#$ -m bea
+## [Recommended] Ask for at least 1GB of memory for the job
+#$ -l mem_free=8G
+## [Recommended] Kill the job if it eats 4GB per slot (i.e. thread) 
+## here it means between 8GB*1 thread=8GB and 8GB*6 threads=48GB
+#$ -l h_vmem=32G
+
+# Print information about the current job
+# ---------------------------------------
+# Print beginning of job
+echo "$(date) job $JOB_NAME started in $QUEUE with jobID=$JOB_ID on $HOSTNAME" 1>&2
+# Print the number of threads used
+echo "NSLOTS = $NSLOTS" 1>&2
+
+
+#find . -name "UBE02_test*.fa" | split -l 5 - ; for file in x*; do mv "$file" "${file//x/UBE02_test_x}"; done;
+source $CONDA3/activate /usr/local/genome2/conda3/envs/diamond-0.9.21;
+while read line; do diamond blastp -d /db/off_biomaj/diamond-v0.9.21/nr.dmnd -q $line --more-sensitive -o $(basename "$line" .fa)_UBE02_test.blast -f 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore salltitles --max-target-seqs 25; done < $1;
+conda deactivate;
+
+
+
+# Get summary of job stats
+# ------------------------
+# Get (max) memory consumption
+echo "$(qstat -f -j $JOB_ID | grep vmem)" 1>&2
+# Print end of job. If not printed, job died before the end.
+echo "$(date) job $JOB_NAME done" 1>&2
+

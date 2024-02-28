@@ -1,0 +1,86 @@
+#!/bin/bash
+#$ -S /bin/bash
+#$ -V
+#$ -cwd
+## Queue settings (can be set at runtime in the qsub submition line)
+#$ -q long.q
+## [Optional] to ask between 1 and 4 processors
+#$ -pe thread 6
+## [Optional] to get job status by email
+#$ -M dmckeown@sb-roscoff.fr
+#$ -m bea
+## [Recommended] Ask for at least 1GB of memory for the job
+#$ -l mem_free=12G
+## [Recommended] Kill the job if it eats 4GB per slot (i.e. thread) 
+## here it means between 8GB*1 thread=8GB and 8GB*6 threads=48GB
+#$ -l h_vmem=32G
+
+# Print information about the current job
+# ---------------------------------------
+# Print beginning of job
+echo "$(date) job $JOB_NAME started in $QUEUE with jobID=$JOB_ID on $HOSTNAME" 1>&2
+# Print the number of threads used
+echo "NSLOTS = $NSLOTS" 1>&2
+
+##### combine UBE05_D002 .fa and .gff files in UGENE to visualise, use UBE05_C006 to see viral gene counts per contig
+##### use the UBE05_B005_key as reference for ncvog=xxxx to functional protein names
+
+NCVOGDEF="/projet/fr2424/sib/dmckeown/phaeoex_screen/finalresult/NCVOG_NCVOGdef"
+ofn="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/*.fa" ## original fastas nucleotide
+NCVOGFUN="/projet/fr2424/sib/dmckeown/phaeoex_screen/finalresult/NCVOG_functional_categories"
+
+##### prepare NCVOG keys
+
+#awk -F '\t' 'BEGIN{OFS= "\t"} ; $0 ~ /NCVOG/ && $10 != "" {print $1,$7,"ncvog_prot_name="$10}' $NCVOGDEF | sort -Vu -k 1,1 | sort -V -k 2,2 | sed 's/NCVOG/ncvog=/g' > UBE05_K001; ## prep gi,NCVOG code, funct name key for figs etc
+#cut -f 2 UBE05_K001 | sed 's/ncvog=/NCVOG/g' | awk 'FNR==NR { array[$1]=$2; next } { for (i in array) gsub("\\<"i"\\>", array[i]) }1'  $NCVOGFUN - | sed 's/^/ncvfg=/g' | sed 's/NCVOG[0-9]*/NA/g' | paste UBE05_K001 - | sed 's/#REF!/uncharacterized_protein/g' > UBE05_K002; ## $1 gi, $2 ncvog code, $3 protein name, $4 functional group
+
+##### prepare ncvog labels to genes
+
+#awk -F "\t" '!a[$1]++' UBE04_A001_ncvog*blast > UBE05_A001; ## get best hit per gene vs NCVOG db
+#awk '{print $1"\t"$2";"$3";"$4}' UBE05_K002 | awk 'FNR==NR { array[$1]=$2; next } { for (i in array) gsub("\\<"i"\\>", array[i]) }1' - UBE05_A001 > UBE05_A003; ## replace gi n blast results with NCVOG info
+#sed 's/|/\t/g' UBE05_A003 | awk -F "\t" '$0 ~ /ncvog=/ {print "UBE05_ID="$1"_\t"$3}' | sed 's/NCVOG/ncvog=/g' > UBE05_A004; ## prep gene name, NCVOG info key
+#awk -F "\t|;" '{print "UBE05_"$9"_"}' UBE03_D001 > UBE05_A005; split -l 107473 UBE05_A005 UBE05_B001_; ## get all gene names and split into smaller parts for array
+
+##### add ncvog labels - ETA 5-9 hours, even as array - run this script on each UBE05_B001 file at once in short.q
+
+#awk 'FNR==NR { array[$1]=$2; next } { for (i in array) gsub(i, array[i]) }1'  UBE05_A004 $1 | sed -E 's/UBE05.*/ncvog=NA;ncvog_prot_name=NA;ncvfg=NA/g' > UBE05_B002_"$1"; ## copy gene name field to end of D001 and replace with NCVOG
+
+##### merge ncvog labels withg rest of data
+
+#for file in UBE05_B002_UBE05_B001_*; do mv "$file" "${file//UBE05_B002_UBE05_B001_/UBE05_B002_}"; done;
+#cat UBE05_B002_* | sed 's/;/\t/g' > UBE05_B003; ## merge the output of previous step
+#cut -d ";" -f 64 UBE03_D001 > UBE05_B004; ## get categories field
+#cut -d ";" --complement -f 64 UBE03_D001 | paste - UBE05_B003 | paste UBE05_B004 - > UBE05_B005;
+#cut -d ";" -f 1-46 UBE05_B005 > UBE05_B005.1; 
+#cut -d ";" -f 47 UBE05_B005 | sed -E 's/=EsV-1-([0-9]*).*\]/=E\1/g' | sed -E 's/=EsV-1-([0-9]*\/[0-9]*)_.*\]/=E\1/g' | sed -E 's/=EsV-1-([0-9]*).*\].*\]/=E\1/g' | sed -E 's/=.*EsV-1-([0-9]*).*\]/=E\1/g' | sed -E 's/=EsV-([0-9]*).*\]/=E\1/g' | sed -E 's/=ESV-1-([0-9]*).*\].*\]/=E\1/g' | sed -E 's/=ESV-1-([0-9]*).*\]/=E\1/g' | sed -E 's/=.*ESV-1-([0-9]*).*\]/=E\1/g' | sed -E 's/=.*Esvgp([0-9]*).*\]/=E\1/g' | sed -E 's/=.*FeldSpV_gp([0-9]*).*\].*\]/=F\1/g' | sed -E 's/=FirrV-1-(.[0-9]*).*\].*\]/=f\1/g' | sed -E 's/=FirrV-1-(.[0-9]*).*\]/=f\1/g' | sed -E 's/=.*FirrV-1-(.[0-9]*).*\]/=f\1/g' > UBE05_B005.2; ## abbreviate Phaeovirus gene names
+#cut -d ";" -f 48-63 UBE05_B005 > UBE05_B005.3; 
+#paste -d ";" UBE05_B005.1 UBE05_B005.2 UBE05_B005.3 > UBE05_B006; ## merge prepped data together to swap categories in 
+awk -F "\t" 'BEGIN{OFS="\t"} ; $11 ~ "ncvog=NA" && $13 ~ "ncvfg=NA" {print $2,$3,$1,$5,$6,$7,$8,$9,$10";"$11";"$12";"$13}' UBE05_B006 > UBE05_B007; awk -F "\t" 'BEGIN{OFS="\t"} ; $11 !~ "ncvog=NA" && $13 ~ "ncvfg=NA" {print $2,$3,$1,$5,$6,$7,$8,$9,$10";"$11";"$12";"$13}' UBE05_B006 >> UBE05_B007; awk -F "\t" 'BEGIN{OFS="\t"} ; $11 !~ "ncvog=NA" && $13 !~ "ncvfg=NA" {print $2,$3,$13,$5,$6,$7,$8,$9,$10";"$11";"$12";"$13}' UBE05_B006 | sed 's/\tncvfg=/\t/g' >> UBE05_B007; ## swap UBE and ncvog categories in
+sort -V -k 1,1 -k 4,4 -k 5,5 UBE05_B007 | awk -F "ontig" '{print > "UBE05_B007_"$1".gff"}'; ## resort and split by genome
+for file in *_c.gff; do mv "$file" "${file//_c.gff/.gff}"; done; for file in *_C.gff; do mv "$file" "${file//_C.gff/.gff}"; done; ## fix file names
+
+##### summarise virus gene counts per genome
+
+#cut -f 1,3 UBE05_B007_*gff | sort -V | uniq -c | sed -E 's/ *([0-9]*) (.*ontig[0-9]*.*)/\1\t\2/g' | awk -F "\t" '{print > "UBE05_C001_"$3}'; ## count and split by category
+#cut -f 1 UBE05_B007_*gff | sort -Vu > UBE05_C002; ## list all contigs
+#for file in UBE05_C001_*; do cut -f 2 $file | grep -vwF -f - UBE05_C002 | sed 's/^/0\t/g' >> $file; done; ## get all contigs with 0 per category
+#for file in UBE05_C001_*; do cut -f 1,2 $file | sort -V -k 2,2 -o $file; done; ## remove extra fields and sort
+#for file in UBE05_C001_*; do cut -f 1 $file > UBE05_C003_"$file"; done; for file in UBE05_C003_UBE05_C001_*; do mv "$file" "${file//UBE05_C003_UBE05_C001_/UBE05_C003_}"; done; ## get counts only
+#paste UBE05_C002 UBE05_C003_* > UBE05_C004; ## merge counts side by side with contig name
+#cut -f 1 UBE05_C004 | sed -E 's/(.*)_contig[0-9]*/\1/g' | sed -E 's/(.*)_Contig[0-9]*/\1/g' > UBE05_C005; ## prep genome name column
+#paste UBE05_C005 UBE05_C004 > UBE05_C006; ## add genome name column
+#ls -l UBE05_C003_* | sed 's/.*UBE05_C003_/\t/g' | tr -d '\n' | sed 's/^\t/Genome\tContig\t/g' | sed 's/$/\tTotal_all_genes\tTotal_viral_genes\n/g' > UBE05_C007; ## make column headers
+#awk -F "\t" '{if ($5 >= 1 || $6 >= 1 || $7 >= 1 || $8 >= 1 || $9 >= 1 || $11 >= 1 || $13 >= 1 || $14 >= 1 || $15 >= 1 || $16 >= 1 || $17 >= 1 || $19 >= 1 || $20 >= 1 || $21 >= 1 || $22 >= 1) print $0"\t"$3+$5+$6+$7+$8+$9+$10+$11+$12+$13+$14+$15+$16+$17+$19+$20+$21+$22"\t"$5+$6+$7+$8+$9+$11+$13+$14+$15+$16+$17+$19+$20+$21+$22}' UBE05_C006 | sort -V -k 1,1 -rk 24,24 | cat UBE05_C007 - > UBE05_C008; ## get only >1 vUBE contigs and add headers and total gene and total viral gene counts
+#cut -f 2 UBE05_C008 | sed '1d' > UBE05_C009; ## get vUBE contig list
+
+##### get gffs and fastas for the contigs with at least 1 viral gene only - just to speed up viewing them in UGENE
+
+for file in UBE05_B007_*.gff; do grep -wF -f UBE05_C009 $file > UBE05_D001_"$file"; done; for file in UBE05_D001_UBE05_B007_*.gff; do mv "$file" "${file//UBE05_D001_UBE05_B007_/UBE05_D001_}"; done; ## get vUBE only gffs
+for file in $ofn; do seqtk subseq $file UBE05_C009 > UBE05_D001_$(basename $file); done; ## get vUBE only fastas
+
+# Get summary of job stats
+# ------------------------
+# Get (max) memory consumption
+echo "$(qstat -f -j $JOB_ID | grep vmem)" 1>&2
+# Print end of job. If not printed, job died before the end.
+echo "$(date) job $JOB_NAME done" 1>&2

@@ -1,0 +1,104 @@
+#!/bin/bash
+#$ -S /bin/bash
+#$ -V
+#$ -cwd
+## Queue settings (can be set at runtime in the qsub submition line)
+#$ -q long.q
+## [Optional] to ask between 1 and 4 processors
+#$ -pe thread 8-12
+## [Recommended] Ask for at least 1GB of memory for the job
+#$ -l mem_free=12G
+## [Recommended] Kill the job if it eats 4GB per slot (i.e. thread) 
+## here it means between 8GB*1 thread=8GB and 8GB*6 threads=48GB
+#$ -l h_vmem=32G
+
+# Print information about the current job
+# ---------------------------------------
+# Print beginning of job
+echo "$(date) job $JOB_NAME started in $QUEUE with jobID=$JOB_ID on $HOSTNAME" 1>&2
+# Print the number of threads used
+echo "NSLOTS = $NSLOTS" 1>&2
+
+##### Public genomes: #####
+#og="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/00__PUBLIC_GENOMES_ANNOTATIONS/*.gff"
+#ofn="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/00__PUBLIC_GENOMES_ASSEMBLIES/*.fa"
+#ofa="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/00__PUBLIC_GENOMES_PROTEOMES/*.fa"
+
+##### Phaeoexplorer genomes: #####
+og="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/02__FINAL_ANNOTATIONS/phex_1-20/*.gff" ## original gffs
+ofn="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/phex_1-20/*.fa" ## original fastas nucleotide
+ofa="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/04__FINAL_PROTEOMES/phex_1-20/*.fa" ## original fastas amino acid
+
+#og="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/02__FINAL_ANNOTATIONS/phex_21-33/*.gff" ## original gffs
+#ofn="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/phex_21-33/*.fa" ## original fastas nucleotide
+#ofa="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/04__FINAL_PROTEOMES/phex_21-33/*.fa" ## original fastas amino acid
+
+
+##### UBE01 VNT - get best hit per gene for blast vs virus only database nt
+#cat UBE01_A003_nt_*.blast | cut -f 15 | sed 's/.*/Viruses/g' > UBE03_A000.1_vnt; ## add sskingdom
+#cat UBE01_A003_nt_*.blast | sed 's/\tN\/A/\tNA/g' | paste - UBE03_A000.1_vnt | cut --complement -f 15 | awk -F"\t" '!a[$1]++' | sort -V -k 1,1 > UBE03_A001_vnt; ## get top hit per gene and add Viruses sskingdom
+
+##### UBE01 VAA - get best hit per gene for blast vs virus only database aa
+#cat UBE01_A003_aa_*.blast | cut -f 13 | sed 's/.*/NA\tViruses/g' > UBE03_A000.1_vaa; ## add $14 and sskingdom
+#cat UBE01_A003_aa_*.blast | sed 's/\tN\/A/\tNA/g' | paste - UBE03_A000.1_vaa | awk -F"\t" '!a[$1]++' | sort -V -k 1,1 > UBE03_A001_vaa; ## get top hit per gene and add Viruses sskingdom
+
+##### UBE02 VVNT / CVNT - get best hit per gene and category (Viruses or Cellular) vs nt database
+#sed -E 's/\tArchaea|\tBacteria|\tEukaryota/\tCellular/g' UBE02_A002_vnt_*blast | sed 's/\tN\/A/\tNA/g' | awk -F"\t" '$15 !~ /NA/ {print $0}' | awk '$3 !="100.000" || $15 =="Viruses"' > UBE03_A001.1_vnt; ## reformat blasts, ignoring kingdomless hits, remove self cellular hits
+#sed -E 's/(.*virus.*|.*Virus.*|.*viral.*|.*Viral.*|.*NZVic14.*|.*EsV-.*|.*ESV-.*|.*Esvgp.*|.*NCLDV.*|.*FirrV.*|.*FeldSpV.*|.*Phage.*\t[0-9]*\t)Cellular$/\1Viruses/g' UBE03_A001.1_vnt > UBE03_A001.2_vnt;
+#awk -F"\t" '!a[$1,$15]++' UBE03_A001.2_vnt | awk -F"\t" '{print > "UBE03_A001_vnt_"$15}'; ## remove self hits, keep only top hit per gene and split by category
+#grep ">" UBE02_A002_vnt_*fa | sort -V | uniq | sed 's/>//g' | cut -d":" -f 2,3 > UBE03_A003_vnt; ## list all vUBEs blasted
+#cut -f 1 UBE03_A001_vnt_Viruses | grep -vwF -f - UBE03_A003_vnt | sed 's/$/\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone/g' >> UBE03_A001_vnt_Viruses; ## get no hit genes
+#cut -f 1 UBE03_A001_vnt_Cellular | grep -vwF -f - UBE03_A003_vnt | sed 's/$/\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone/g' >> UBE03_A001_vnt_Cellular; ## get no hit genes
+
+##### UBE02 VVAA / CVAA - get best hit per gene and category (Viruses or Cellular) vs nr database
+#cat UBE02_A002_vaa_*blast | cut -f 15 | sed -E 's/Bacteria|Eukaryota|Archaea/Cellular/g' | sed -E 's/Cellular;Cellular;Cellular;Viruses|Cellular;Cellular;Viruses/NA/g' | sed -E 's/Cellular;Viruses/Viruses/g' | sed -E 's/Cellular;Cellular|Cellular;Cellular/Cellular/g' | sed 's/N\/A/NA/g' | awk -F"\t" '$0 ~ /Cellular|Viruses/ {print $0}' > UBE03_A002.1_vaa; ## fix sskingdoms
+#cat UBE02_A002_vaa_*blast | sed -E 's/Bacteria|Eukaryota|Archaea/Cellular/g' | sed -E 's/Cellular;Cellular;Cellular;Viruses|Cellular;Cellular;Viruses/NA/g' | sed -E 's/Cellular;Viruses/Viruses/g' | sed -E 's/Cellular;Cellular|Cellular;Cellular/Cellular/g' | sed 's/N\/A/NA/g' | awk -F"\t" '$15 ~ /Cellular|Viruses/ {print $0}' | paste - UBE03_A002.1_vaa | cut --complement -f 15 | awk '$3 !="100.000" || $15 =="Viruses"' > UBE03_A002.2_vaa;
+#sed -E 's/(.*virus.*|.*Virus.*|.*viral.*|.*Viral.*|.*NZVic14.*|.*EsV-.*|.*ESV-.*|.*Esvgp.*|.*NCLDV.*|.*FirrV.*|.*FeldSpV.*|.*Phage.*\t[0-9]*\t)Cellular$/\1Viruses/g' UBE03_A002.2_vaa > UBE03_A002.3_vaa;
+#awk -F"\t" '!a[$1,$15]++' UBE03_A002.3_vaa | awk -F"\t" '{print > "UBE03_A001_vaa_"$15}'; ## keep only top hit per gene (after removing and NA kingdom hits - these are vectors/clones) and split by category
+#grep ">" UBE02_A002_vaa_*fa | sort -V | uniq | sed -E 's/>|\tassembled CDS//g' | cut -d":" -f 2,3 > UBE03_A003_vaa; ## list all vUBEs blasted
+#cut -f 1 UBE03_A001_vaa_Viruses | grep -vwF -f - UBE03_A003_vaa | sed 's/$/\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone/g' >> UBE03_A001_vaa_Viruses; ## get no hit genes
+#cut -f 1 UBE03_A001_vaa_Cellular | grep -vwF -f - UBE03_A003_vaa | sed 's/$/\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone/g' >> UBE03_A001_vaa_Cellular; ## get no hit genes
+
+##### UBE01 NNT - get best hit per gene for blast vs database nt - non vUBEs bordering vUBE clusters
+#sed -E 's/\tArchaea|\tBacteria|\tEukaryota/\tCellular/g' UBE02_A002_nnt_*blast | sed 's/\tN\/A/\tNA/g' | awk -F"\t" '$15 !~ /NA/ {print $0}' | awk '$3 !="100.000" || $15 =="Viruses"' > UBE03_A001.1_nnt; ## reformat blasts, ignoring kingdomless hits
+#sed -E 's/(.*virus.*|.*Virus.*|.*viral.*|.*Viral.*|.*NZVic14.*|.*EsV-.*|.*ESV-.*|.*Esvgp.*|.*NCLDV.*|.*FirrV.*|.*FeldSpV.*|.*Phage.*\t[0-9]*\t)Cellular$/\1Viruses/g' UBE03_A001.1_nnt > UBE03_A001.2_nnt; ## fix EVEs labelled Cellular by NCBI
+#awk -F"\t" '!a[$1,$15]++' UBE03_A001.2_nnt | awk -F"\t" '{print > "UBE03_A001_nnt_"$15}'; ##  keep only top hit per gene and split by category
+#grep ">" UBE02_A002_nnt_*fa | sort -V | uniq | sed 's/>//g' | cut -d":" -f 2,3 > UBE03_A003_nnt; ## list all vUBEs blasted
+#cut -f 1 UBE03_A001_nnt_Viruses | grep -vwF -f - UBE03_A003_nnt | sed 's/$/\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone/g' >> UBE03_A001_nnt_Viruses; ## get no hit genes
+#cut -f 1 UBE03_A001_nnt_Cellular | grep -vwF -f - UBE03_A003_nnt | sed 's/$/\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone/g' >> UBE03_A001_nnt_Cellular; ## get no hit genes
+
+##### UBE01 NAA - get best hit per gene for blast vs database nr - non vUBEs bordering vUBE clusters
+#cat UBE02_A002_naa_*blast | cut -f 15 | sed -E 's/Bacteria|Eukaryota|Archaea/Cellular/g' | sed -E 's/Cellular;Cellular;Cellular;Viruses|Cellular;Cellular;Viruses/NA/g' | sed -E 's/Cellular;Viruses/Viruses/g' | sed -E 's/Cellular;Cellular|Cellular;Cellular/Cellular/g' | sed 's/N\/A/NA/g' | awk -F"\t" '$0 ~ /Cellular|Viruses/ {print $0}' > UBE03_A002.1_naa; ## fix sskingdoms
+#cat UBE02_A002_naa_*blast | sed -E 's/Bacteria|Eukaryota|Archaea/Cellular/g' | sed -E 's/Cellular;Cellular;Cellular;Viruses|Cellular;Cellular;Viruses/NA/g' | sed -E 's/Cellular;Viruses/Viruses/g' | sed -E 's/Cellular;Cellular|Cellular;Cellular/Cellular/g' | sed 's/N\/A/NA/g' | awk -F"\t" '$15 ~ /Cellular|Viruses/ {print $0}' | paste - UBE03_A002.1_naa | cut --complement -f 15 | awk '$3 !="100.000" || $15 =="Viruses"' > UBE03_A002.2_naa;
+#sed -E 's/(.*virus.*|.*Virus.*|.*viral.*|.*Viral.*|.*NZVic14.*|.*EsV-.*|.*ESV-.*|.*Esvgp.*|.*NCLDV.*|.*FirrV.*|.*FeldSpV.*|.*Phage.*\t[0-9]*\t)Cellular$/\1Viruses/g' UBE03_A002.2_naa > UBE03_A002.3_naa;
+#awk -F"\t" '!a[$1,$15]++' UBE03_A002.3_naa | awk -F"\t" '{print > "UBE03_A001_naa_"$15}'; ## remove self hits, keep only top hit per gene (after removing and NA kingdom hits - these are vectors/clones) and split by category
+#grep ">" UBE02_A002_naa_*.fa | sort -V | uniq | sed -E 's/>|\tassembled CDS//g' | cut -d":" -f 2,3 > UBE03_A003_naa; ## list all vUBEs blasted
+#cut -f 1 UBE03_A001_naa_Viruses | grep -vwF -f - UBE03_A003_naa | sed 's/$/\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone/g' >> UBE03_A001_naa_Viruses; ## get no hit genes
+#cut -f 1 UBE03_A001_naa_Cellular | grep -vwF -f - UBE03_A003_naa | sed 's/$/\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone\tnone/g' >> UBE03_A001_naa_Cellular; ## get no hit genes
+
+
+##### merge (paste) best hits per gene for UBE01 vnt, UBE02 vntv, and UBE02 vntc, then remove vnt, unless there was no hit for vvnt
+#sort -V -k 1,1 UBE03_A001_vnt_Viruses | paste UBE03_A001_vnt - > UBE03_B001_vnt;
+#sort -V -k 1,1 UBE03_A001_vnt_Cellular | paste UBE03_B001_vnt - | awk -F "\t" 'BEGIN{OFS="\t"}; $15 !="none" && $30 != "none"' | cut -f 16-45 > UBE03_B001_vnt.1;
+#sort -V -k 1,1 UBE03_A001_vnt_Cellular | paste UBE03_B001_vnt - | awk -F "\t" 'BEGIN{OFS="\t"}; $15 !="none" && $30 == "none"' | cut -f 1-15,31-45 >> UBE03_B001_vnt.1; sort -V -k 1,1 UBE03_B001_vnt.1 -o UBE03_B001_vnt.1;
+
+##### merge (paste) best hits per gene for UBE01 vaa, UBE02 vaav, and UBE02 vaac, then remove vnt, unless there was no hit for vvnt
+#sort -V -k 1,1 UBE03_A001_vaa_Viruses | paste UBE03_A001_vaa - > UBE03_B001_vaa;
+#sort -V -k 1,1 UBE03_A001_vaa_Cellular | paste UBE03_B001_vaa - | awk -F "\t" 'BEGIN{OFS="\t"}; $15 !="none" && $30 != "none"' | cut -f 16-45 > UBE03_B001_vaa.1;
+#sort -V -k 1,1 UBE03_A001_vaa_Cellular | paste UBE03_B001_vaa - | awk -F "\t" 'BEGIN{OFS="\t"}; $15 !="none" && $30 == "none"' | cut -f 1-15,31-45 >> UBE03_B001_vaa.1; sort -V -k 1,1 UBE03_B001_vaa.1 -o UBE03_B001_vaa.1;
+
+##### merge (paste) best hits per gene for UBE02 nntv, and UBE02 nntc
+#sort -V -k 1,1 UBE03_A001_nnt_Viruses > UBE03_B001_nnt;
+#sort -V -k 1,1 UBE03_A001_nnt_Cellular | paste UBE03_B001_nnt - > UBE03_B001_nnt.1;
+
+##### merge (paste) best hits per gene for UBE02 naav, and UBE02 naac
+#sort -V -k 1,1 UBE03_A001_naa_Viruses > UBE03_B001_naa;
+#sort -V -k 1,1 UBE03_A001_naa_Cellular | paste UBE03_B001_naa - > UBE03_B001_naa.1;
+
+
+# Get summary of job stats
+# ------------------------
+# Get (max) memory consumption
+echo "$(qstat -f -j $JOB_ID | grep vmem)" 1>&2
+# Print end of job. If not printed, job died before the end.
+echo "$(date) job $JOB_NAME done" 1>&2

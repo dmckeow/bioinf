@@ -1,0 +1,69 @@
+#!/bin/bash
+#$ -S /bin/bash
+#$ -V
+#$ -cwd
+## Queue settings (can be set at runtime in the qsub submition line)
+#$ -q long.q
+## [Optional] to ask between 1 and 4 processors
+#$ -pe thread 4-8
+#$ -m bea
+## [Recommended] Ask for at least 1GB of memory for the job
+#$ -l mem_free=8G
+## [Recommended] Kill the job if it eats 4GB per slot (i.e. thread) 
+## here it means between 8GB*1 thread=8GB and 8GB*6 threads=48GB
+#$ -l h_vmem=32G
+
+# Print information about the current job
+# ---------------------------------------
+# Print beginning of job
+echo "$(date) job $JOB_NAME started in $QUEUE with jobID=$JOB_ID on $HOSTNAME" 1>&2
+# Print the number of threads used
+echo "NSLOTS = $NSLOTS" 1>&2
+##### IF USING PUBLIC GENOME - i.e. NOT GMOVE/PHAEOEXPLORER format - run UBE00 workflow first to reformat gffs and fastas
+
+##### Public genomes: #####
+og="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/00__PUBLIC_GENOMES_ANNOTATIONS/*.gff"
+ofn="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/00__PUBLIC_GENOMES_ASSEMBLIES/*.fa"
+ofa="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/00__PUBLIC_GENOMES_PROTEOMES/*.fa"
+
+##### Phaeoexplorer genomes: #####
+#og="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/02__FINAL_ANNOTATIONS/*.gff" ## original phex gffs 
+#ofn="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/*.fa" ## original fastas nucleotide
+#ofa="/projet/fr2424/sib/dmckeown/phaeoex_screen/input/04__FINAL_PROTEOMES/*.fa" ## original fastas amino acid
+
+#for file in $og; do awk '$3 =="mRNA"' $file >> UBE01_A001; done; ## get all mRNA info from all genomes
+
+
+##### make nucleotide gff and fastas of UBE genes in continuous clusters of >2 UBE genes, uninterrupted by non-UBE genes or intergenetic gaps of size specified by $4-i < n. Uniq because most genes printed as duplicates
+#sort -V -k 1,1 -k 4,4 -k 5,5 UBE01_A001 | awk -F "\t|;" '/(exons=1|exons=2)$/ && p ~ /(exons=1|exons=2)$/ && f == $1 && ($4 - i) < 20000 {print p; print} {p=$0} {f=$1} {i=$5}' | sort -V -k 1,1 -k 4,4 -k 5,5 | uniq > UBE01_A002_nt.gff;
+#find $ofn -name "*.fa" > UBE01_ofn;
+
+#while read line; do bedtools getfasta -fi $line -bed UBE01_A002_nt.gff -fo UBE01_A003_nt_"$(basename $line)"; done < UBE01_ofn; ## get nucleotide fastas per genome of all UBE cluster genes
+
+##### make amino acid fastas of UBE genes in continuous clusters
+#awk -F"\t|;" '{print $9}' UBE01_A002_nt.gff | sed 's/ID=//g' | sed -E 's/$/ assembled CDS/g' > UBE01_A002_aa; ## list UBE genes
+#find $ofa -name "*.fa" > UBE01_ofa;
+#while read line; do seqtk subseq $line UBE01_A002_aa > UBE01_A003_aa_"$(basename $line)"; done < UBE01_ofa;
+
+#for file in UBE01*UBE00*; do mv "$file" "${file//_UBE00_/_}"; done; ## public genomes only: fix script output names (remove UBE00)
+
+##### BLASTS - run each as separate qsub from this script
+#find . -name "UBE01_A003_nt_*.fa" > UBE01_B001_nt;
+#source $CONDA3/activate /usr/local/genome2/conda3/envs/blast-2.9.0
+#while read line; do blastn -query $line -db "/projet/fr2424/sib/dmckeown/db/virus/vnt" -out $(basename "$line" .fa).blast -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore salltitles staxids sskingdoms" -task dc-megablast -evalue 0.001 -max_target_seqs 25 -num_threads $NSLOTS; done < UBE01_B001_nt;
+#conda deactivate;
+
+#find . -name "UBE01_A003_aa_*.fa" > UBE01_B001_aa;
+#source $CONDA3/activate /usr/local/genome2/conda3/envs/diamond-0.9.21;
+#while read line; do diamond blastp -d /projet/fr2424/sib/dmckeown/db/virus/RVDB.dmnd -q $line --more-sensitive -o $(basename "$line" .fa).blast -f 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore salltitles --max-target-seqs 25; done < UBE01_B001_aa;
+#conda deactivate;
+
+
+
+# Get summary of job stats
+# ------------------------
+# Get (max) memory consumption
+echo "$(qstat -f -j $JOB_ID | grep vmem)" 1>&2
+# Print end of job. If not printed, job died before the end.
+echo "$(date) job $JOB_NAME done" 1>&2
+

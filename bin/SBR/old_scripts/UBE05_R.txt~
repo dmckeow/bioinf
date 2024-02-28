@@ -1,0 +1,7 @@
+##### to make gggenes gene arrow plots
+ggplot(UBE05_T001_Ec32_V2_contig00, aes(xmin = start, xmax = end, y = molecule, fill = gene, label = label, forward = direction)) +
+geom_gene_arrow(arrowhead_height = unit(3, "mm"), arrowhead_width = unit(1, "mm")) +
+geom_text(aes(x = end - ((end-start)/2), y = 1.1, label = label)) +
+facet_wrap(~ molecule, scales = "free", ncol = 1) +
+scale_fill_brewer(palette = "Set3") +
+theme_genes()

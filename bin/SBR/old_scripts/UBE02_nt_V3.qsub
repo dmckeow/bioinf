@@ -1,0 +1,39 @@
+#!/bin/bash
+#$ -S /bin/bash
+#$ -V
+#$ -cwd
+## Queue settings (can be set at runtime in the qsub submition line)
+#$ -q long.q
+## [Optional] to ask between 1 and 4 processors
+#$ -pe thread 6
+## [Recommended] Ask for at least 1GB of memory for the job
+#$ -l mem_free=12G
+## [Recommended] Kill the job if it eats 4GB per slot (i.e. thread) 
+## here it means between 8GB*1 thread=8GB and 8GB*6 threads=48GB
+#$ -l h_vmem=32G
+
+# Print information about the current job
+# ---------------------------------------
+# Print beginning of job
+echo "$(date) job $JOB_NAME started in $QUEUE with jobID=$JOB_ID on $HOSTNAME" 1>&2
+# Print the number of threads used
+echo "NSLOTS = $NSLOTS" 1>&2
+
+
+##### NUCLEOTIDE - VNT short.q 6 threads, [split -l n] genomes per run
+#find . -name "UBE02_A002_vnt_*.fa" | split -l 1 - ; for file in x*; do mv "$file" "${file//x/UBE02_B001_vnt_x}"; done;
+
+##### NUCLEOTIDE - NNT short.q 6 threads, [split -l n] genomes per run
+#find . -name "UBE02_A002_nnt_*.fa" | split -l 1 - ; for file in x*; do mv "$file" "${file//x/UBE02_B001_nnt_x}"; done;
+
+source $CONDA3/activate /usr/local/genome2/conda3/envs/blast-2.9.0;
+while read line; do blastn -query $line -db "/db/nt/current/blast/nt" -out $(basename "$line" .fa).blast -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore salltitles staxids sskingdoms" -task dc-megablast -evalue 0.001 -max_target_seqs 25 -num_threads $NSLOTS; done < $1; ## pass each run from command line
+conda deactivate;
+
+# Get summary of job stats
+# ------------------------
+# Get (max) memory consumption
+echo "$(qstat -f -j $JOB_ID | grep vmem)" 1>&2
+# Print end of job. If not printed, job died before the end.
+echo "$(date) job $JOB_NAME done" 1>&2
+

@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+#SBATCH -p fast                      # partition
+#SBATCH --cpus-per-task 10           # number of CPU cores required
+#SBATCH --mem 100                    # memory pool for all cores
+#SBATCH -t 0-12:00                    # time (D-HH:MM)
+#SBATCH -o slurm.%N.%j.out           # STDOUT
+#SBATCH -e slurm.%N.%j.err           # STDERR
+#SBATCH --mail-type=ALL              # can be BEGIN, END, FAIL or REQUEUE
+#SBATCH --mail-user=dmckeown@sb-roscoff.fr
+
+#####  [split -l n] genomes per run, command line variable $1 is each UBE02_B001_ file that has a list of genomes in it
+
+## VAA ##
+#grep -c ">" UBE02_A002_vaa_*.fa | sort -n -t':' -k 2,2 | sed 's/^/.\//g' | cut -d':' -f 1 | split -l 1 - ; for file in x*; do mv "$file" "${file//x/UBE02_B001_vaa_x}"; done;
+
+## NAA ##
+#grep -c ">" UBE02_A002_naa_*.fa | sort -n -t':' -k 2,2 | sed 's/^/.\//g' | cut -d':' -f 1 | split -l 1 - ; for file in x*; do mv "$file" "${file//x/UBE02_B001_naa_x}"; done;
+
+#source $CONDA3/activate /usr/local/genome2/conda3/envs/blast-2.9.0;
+srun source /shared/software/miniconda/bin/activate diamond-0.9.36;
+srun while read line; do blastp -query $line -db "/db/nr/current/blast/nr" -out $(basename "$line" .fa).blast -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore salltitles staxids sskingdoms" -evalue 0.001 -max_target_seqs 25 -num_threads $NSLOTS; done < $1;
+srun conda deactivate;
+

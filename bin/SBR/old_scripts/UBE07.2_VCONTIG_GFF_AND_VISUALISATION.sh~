@@ -1,0 +1,68 @@
+#!/bin/bash
+#$ -S /bin/bash
+#$ -V
+#$ -cwd
+## Queue settings (can be set at runtime in the qsub submition line)
+#$ -q short.q
+## [Optional] to ask between 1 and 4 processors
+#$ -pe thread 6-20
+## [Optional] to get job status by email
+#$ -M dmckeown@sb-roscoff.fr
+#$ -m bea
+## [Recommended] Ask for at least 1GB of memory for the job
+#$ -l mem_free=1G
+## [Recommended] Kill the job if it eats 4GB per slot (i.e. thread) 
+## here it means between 8GB*1 thread=8GB and 8GB*6 threads=48GB
+#$ -l h_vmem=32G
+
+# Print information about the current job
+# ---------------------------------------
+# Print beginning of job
+echo "$(date) job $JOB_NAME started in $QUEUE with jobID=$JOB_ID on $HOSTNAME" 1>&2
+# Print the number of threads used
+echo "NSLOTS = $NSLOTS" 1>&2
+
+##### this script prepares a final gff file with annotations from UBE05, fastas for UBE contigs only, and prepares gff and fastas for contigs with UBEs to create annotation figures in UGENE
+##### this script includes 2 MANUAL STEPS; run script, then do the manual steps as detailed below in the script, then run final steps
+##### important outputs of UBE07: UBE07_*.gff (for usual .gff stuff), UBE07_*UGENE.gff & UBE07_*UGENE.fa (merge in UGENE to gb for annotation visualisation)
+
+### MANUAL STEP 1; check UBE07_E003 vs UBE07_E004, edit annotations that are too broad or redundant in UBE07_E004, you will probably have to make several versions of UBE07_E003 and UBE07_E004, until the they have no redundant or too broad abbreviations; name final version UBE07_E005.
+### MANUAL STEP 2; copy UBE07_E005 > UBE07_E006_key, and manually remove all the synonymous genes, so you have a key with 1 gene name, 1 abbreviation, for figure legends, etc
+
+##### Once manual steps are done, now finish generating the gffs for UGENE (this step may take over 30 mins)
+cat UBE07_B005 UBE07_C004 UBE07_D001 | awk -F'\t|;' 'BEGIN {OFS="\t"} ; {print $1,$2,$3,$16,$4,$5,$6,$7,$8}' | sed 's/mRNA\tphexvi=//g' | sed 's/\t\t/\t/g' > UBE07_D002; ## get \t delimited part of gffs
+cat UBE07_B005 UBE07_C004 UBE07_D001 | awk -F'\t|;' 'BEGIN {OFS=";"} ; {print $9,$10,$11,$12,$13,$14,$15,$17,$18}' | paste UBE07_D002 - | sort -V -k 1,1 -k 4,5 -k 3,3 | sed 's/;;;;;;;;//g' | sed 's/=mRNA.*ontig/=/g'  > UBE07_D003; ## get ; delimited part of gffs and merge with \t part and shorten gene names
+awk 'FNR==NR { array[$1]=$2; next } { for (i in array) gsub(i, array[i]) }1' UBE07_E005 UBE07_D003 | awk -F'ontig' '{print > "UBE07_UGENE_"$1".gff"}'; ## search UGENE gffs for ncvog_names ($1 in 1st input file) and replace with abbreviations (with $2 in 1st input) and split into gffs per genome
+
+##### finally, fix all .gff file names
+for file in UBE07_*_c.gff; do mv "$file" "${file//_c.gff/.gff}"; done; for file in UBE07_*_C.gff; do mv "$file" "${file//_C.gff/.gff}"; done;
+
+
+##### FINALLY, create fastas for UGENE, using UBE contig list to get complete, unduplicated sequence fastas of UBE contigs ONLY (also a slow step)
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Desmarestia-dudresnayi.fa UBE07_C001 > UBE07_UGENE_Desmarestia-dudresnayi.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-crouaniorum-2c_FEMALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-crouaniorum-2c_FEMALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-crouaniorum-2c_MALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-crouaniorum-2c_MALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-fasciculatus_MALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-fasciculatus_MALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-siliculosus-1a_FEMALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-siliculosus-1a_FEMALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-siliculosus-1a_MALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-siliculosus-1a_MALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp1_FEMALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp1_FEMALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp1_MALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp1_MALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp2_FEMALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp2_FEMALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp2_MALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp2_MALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp3_MALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp3_MALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp4_FEMALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp4_FEMALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp4_MALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp4_MALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp5_FEMALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp5_FEMALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp6_FEMALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp6_FEMALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Ectocarpus-sp9_FEMALE.fa UBE07_C001 > UBE07_UGENE_Ectocarpus-sp9_FEMALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Laminarionema-elsbetiae_SP.fa UBE07_C001 > UBE07_UGENE_Laminarionema-elsbetiae_SP.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Porterinema-fluviatile.fa UBE07_C001 > UBE07_UGENE_Porterinema-fluviatile.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Scytosiphon-lomentaria_MALE.fa UBE07_C001 > UBE07_UGENE_Scytosiphon-lomentaria_MALE.fa;
+#seqtk subseq /projet/fr2424/sib/dmckeown/phaeoex_screen/input/01__FINAL_GENOME_ASSEMBLIES/Undaria-pinnatifida_MALE.fa UBE07_C001 > UBE07_UGENE_Undaria-pinnatifida_MALE.fa;
+
+# Get summary of job stats
+# ------------------------
+# Get (max) memory consumption
+echo "$(qstat -f -j $JOB_ID | grep vmem)" 1>&2
+# Print end of job. If not printed, job died before the end.
+echo "$(date) job $JOB_NAME done" 1>&2
