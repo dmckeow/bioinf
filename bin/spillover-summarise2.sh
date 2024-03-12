@@ -68,31 +68,8 @@ PROJECT_NAME=$(basename $input)
 
 #################################################################
 
-########################################## STEP A1 - get bin info for anvio run (repeat for each run you want to include frmo within main folder - concatenate them into a single "bin_list" and run rest of script using that)
-if [[ "${step}" =~ "A" ]] || [[ "$step" =~ "a1" ]]; then
-###########################################
-rm -f bin_list; touch bin_list
-
-for f in $(find */bin_by_bin/* -name "*-contigs.fa"); do
-    B=$(echo $(basename $PWD)"___"$(basename $f) | sed -e 's/-contigs\.fa//g' -e 's/-SUMMARY___/___/g')
-    grep ">" $f | sed "s/>/$B\t/g"
-done >> bin_list
-
-sed -e 's/;\|\t/,/g' -e 's/\//;/g' ${input} | awk -F"," '{print "s/^"$3"$/"$0"/g"}' > tmp.fixer.input
-cut -f 2 bin_list | sed -E 's/contig_(.+)_[0-9]+$/\1/g' | sed -f tmp.fixer.input - | paste bin_list - | sed -e 's/,/\t/g' -e 's/;/\//g' > tmp && mv tmp bin_list
-
-sed -i 's/;/,/g' bin_list
-
-awk -F "\t" '{print "s/^"$1"$/"$2"/g"}' *.deflinekey > tmp.fixer
-
-cut -f 2 bin_list | sed -f tmp.fixer - | paste bin_list - > tmp && mv tmp bin_list
-
-sort -t $'\t' -k 5,5V bin_list -o bin_list
 
 
-###########################################
-fi
-###########################################
 
 ########################################## STEP A2 - prepare mapping plots for the contigs
 if [[ "${step}" =~ "A" ]] || [[ "$step" =~ "a2" ]]; then
@@ -100,23 +77,34 @@ if [[ "${step}" =~ "A" ]] || [[ "$step" =~ "a2" ]]; then
 
 #### dereplicate contigs before mapping
 rm -fr tmp.derep; mkdir tmp.derep
+rm -f all-contigs.fa; touch all-contigs.fa
+
 for f in $(cat ${input}); do
     CONTIGS=$(echo $f | cut -d ";" -f 1)
-    seqkit seq --min-len 1500 $CONTIGS > tmp.derep/$(basename $CONTIGS).0
-    cd-hit-est -c 0.95 -s 0.9 -n 4 -i tmp.derep/$(basename $CONTIGS).0 -o tmp.derep/$(basename $CONTIGS)
-    rm -f tmp.derep/$(basename $CONTIGS).0
+    seqkit seq --min-len 1000 $CONTIGS > tmp.derep/$(basename $CONTIGS).0
+    cd-hit-est -c 0.9 -s 0.8 -n 4 -i tmp.derep/$(basename $CONTIGS).0 -o tmp.derep/$(basename $CONTIGS)
+    ####### get all the contigs without any filtering for all other tools
+    cat $CONTIGS > tmp.derep/$(basename $CONTIGS).0
 done
 
 rm -f derep-contigs.fa; touch derep-contigs.fa
-rm -f tmp.derep/*.clstr
 
 for f in tmp.derep/*; do
     N=$(basename $f)
     sed -i "s/>/>${N}______/g" $f
 done
 
+for f in tmp.derep/*.0; do
+    N=$(basename $f)
+    sed -i "s/\.0______/______/g" $f
+done
+
+cat tmp.derep/*.0 > all-contigs.fa
+
 #################################################
 #########################################################
+
+if [ -f input_merge_bc ]; then
 
 #### dereplicate further by specific merged barcodes, using last contig in each row as merged file name
 rm -fr tmp.derep.merge; mkdir tmp.derep.merge
@@ -132,10 +120,12 @@ sed -E 's/^cat (.*) >.*/rm -f \1/g' tmp.run_bc_merge > tmp.run_bc_merge.rm
 bash tmp.run_bc_merge.rm
 for f in tmp.derep.merge/*.contigs.fasta; do mv $f tmp.derep/ ; done
 
+fi
+
 #################################################
 #################################################
 
-cat tmp.derep/* >> derep-contigs.fa
+cat tmp.derep/*.fasta >> derep-contigs.fa
 
 #### ALL contigs vs ALL reads for each sample in the bin and count them per contig
 rm -fr tmp.mapping; mkdir tmp.mapping
@@ -151,14 +141,45 @@ rm -fr tmp.mapping; mkdir tmp.mapping
 
 bash run_mapping
 
+##### record what contigs removed by dereplication
+grep ">" derep-contigs.fa | sed -e 's/ .*//g' -e 's/>//g' > tmp.deflines.derep.contigs
+grep ">" all-contigs.fa | sed -e 's/ .*//g' -e 's/>//g' | grep -vwF -f tmp.deflines.derep.contigs - > tmp.deflines.all-contigs
+
+sed -i 's/$/\tNO/g' tmp.deflines.derep.contigs
+sed -i 's/$/\tYES/g' tmp.deflines.all-contigs
+cat tmp.deflines.derep.contigs tmp.deflines.all-contigs | sort -V -t $'\t' -k 1,1 > tmp.deflines.all-contigs.1
+
+seqkit seq --max-len 999 all-contigs.fa | grep ">" | sed -e 's/ .*//g' -e 's/$/\tYES/g' -e 's/>//g' > tmp.deflines.all-contigs.2
+seqkit seq --min-len 1000 all-contigs.fa | grep ">" | sed -e 's/ .*//g' -e 's/$/\tNO/g' -e 's/>//g' >> tmp.deflines.all-contigs.2
+sort -V -t $'\t' -k 1,1 -o tmp.deflines.all-contigs.2 tmp.deflines.all-contigs.2
+paste tmp.deflines.all-contigs.1 tmp.deflines.all-contigs.2 | awk -F "\t" '{if($4 == "YES") print $1"\tNO\t"$4; else print $1"\t"$2"\t"$4}' | sed -z 's/^/contig\tWasContigRemovedByDerep\tWasContigRemovedByLengthCutoff\n/g' > SeqsRemovedByClustering
+
+
+## mmseqs cluster the derep contigs
+
+############# cluster at 90 % sequence ID over 80 % of length (of the shorter sequence in pairwise comparison) [Zayed et al. 2022, Science 376, 156-162]
+mmseqs easy-cluster all-contigs.fa binned_contigs-mmseqs tmp.binned_contigs-mmseqs --min-seq-id 0.9 -c 0.8 --cov-mode 5
+
+### give mmseqs clusters group names
+awk -F "\t" '{if($1 == $2) print $1}' binned_contigs-mmseqs_cluster.tsv > bin_mmseq
+counter=1
+while IFS=$'\t' read -r line; do
+    group=$(printf '%03d' $counter)
+    echo "/^$line\\t/ s/$/\t$group/g"
+    ((counter++))
+done < bin_mmseq | sed -f - binned_contigs-mmseqs_cluster.tsv > tmp && mv tmp bin_mmseq
+
+cut -f 3 bin_mmseq | sort -V | uniq -c | sed -E 's/^ +(.+) (.+)/\/\\t\2\$\/ s\/$\/\\t\1\/g/g' | sed -f - bin_mmseq | cut -f 2-4 > tmp_bin_mmseq && mv tmp_bin_mmseq bin_mmseq
+
+
+
+for f in ${bioinfdb}/DMND/*; do
+    diamond blastx --range-culling --max-target-seqs 1 -F 15 --evalue 1e-20 --sensitive -p $THREADS -d $f -q all-contigs.fa -f 6 -o $(basename $f .dmnd)_AllContigs.dmnd.blastx
+done
+
 ###########################################
 fi
 ###########################################
-
-ISJOBRUNNING=$(squeue --me | grep -s "wrap" | wc -l); 
-until [[ $ISJOBRUNNING -le 0 ]]; do 
-    sleep 1m; ISJOBRUNNING=$(squeue --me | grep -s "wrap" | wc -l);
-done;
 
 ################################################################################################ B1
 if [[ "${step}" =~ "B" ]] || [[ "$step" =~ "b1" ]]; then
@@ -166,12 +187,22 @@ if [[ "${step}" =~ "B" ]] || [[ "$step" =~ "b1" ]]; then
 ######### run kaiju on the bctrimmed reads (runs separately from any other steps, but must have completed Step A1 )
 
 for f in "$bioinfdb"/KAIJU/*; do
-    kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i derep-contigs.fa -o derep-contigs.fa.kaiju.$(basename $f) -z $THREADS -v
-    sort -t $'\t' -V -k 2,2 derep-contigs.fa.kaiju.$(basename $f) -o derep-contigs.fa.kaiju.$(basename $f)
-    kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i derep-contigs.fa.kaiju.$(basename $f) -o derep-contigs.fa.kaiju.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
+    kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i all-contigs.fa -o all-contigs.fa.kaiju.$(basename $f) -z $THREADS -v
+    sort -t $'\t' -V -k 2,2 all-contigs.fa.kaiju.$(basename $f) -o all-contigs.fa.kaiju.$(basename $f)
+    kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i all-contigs.fa.kaiju.$(basename $f) -o all-contigs.fa.kaiju.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
 done
 
-awk '{print $0"\t0\tNA\tNA\tNA\tNA"}' derep-contigs.fa.kaiju.*.names | cut -f 1-8 | sort -t $'\t' -k 2,2V -k 4,4nr | awk -F "\t" '!a[$2]++' > derep-contigs.fa.kaiju.merge
+for f in all-contigs.fa.kaiju.*.names; do
+    awk '{print $0"\t0\tNA\tNA\tNA\tNA"}' all-contigs.fa.kaiju.*.names | cut -f 1-8 > tmp.$f && mv tmp.$f $f
+done
+
+sed -i -z 's/^/kaiju_C_or_U\tkaiju_specific_contig\tkaiju_taxid\tkaiju_score\tkaiju_taxids_all\tkaiju_accessions\tkaiju_aligned_seq\tkaiju_taxonomy\n/g' all-contigs.fa.kaiju.*.names
+
+
+#ISJOBRUNNING=$(squeue --me | grep -s "wrap" | wc -l); 
+#until [[ $ISJOBRUNNING -le 0 ]]; do 
+ #   sleep 1m; ISJOBRUNNING=$(squeue --me | grep -s "wrap" | wc -l);
+#done;
 
 ################################################################################################
 fi
@@ -196,11 +227,11 @@ cat tmp.mapping/*.bam.reads_mapped_2 >> ALL.bam.reads_mapped.ALL
 
 #### get reads mapped total per contig and by sample (that reads came from)
 
-awk -F'\t' '{C = $3; n=$2; sum[C] += n;} END{for (C in sum)print C"\t"sum[C];}' ALL.bam.reads_mapped.ALL | awk -F "\t" '{print "s/^"$1"$/"$1"\\t"$2"/g"}' > reads_mapped_bycontig
-cut -f 3 ALL.bam.reads_mapped.ALL | sed -f reads_mapped_bycontig - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
+awk -F'\t' '{C = $3; n=$2; sum[C] += n;} END{for (C in sum)print C"\t"sum[C];}' ALL.bam.reads_mapped.ALL | awk -F "\t" '{print $1"\t"$2}' > reads_mapped_bycontig
+##cut -f 3 ALL.bam.reads_mapped.ALL | sed -f reads_mapped_bycontig - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
 
-awk -F'\t' '{C = $1; n=$2; sum[C] += n;} END{for (C in sum)print C"\t"sum[C];}' ALL.bam.reads_mapped.ALL | awk -F "\t" '{print "s/^"$1"$/"$1"\\t"$2"/g"}' > reads_mapped_bysample
-cut -f 1 ALL.bam.reads_mapped.ALL | sed -f reads_mapped_bysample - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
+awk -F'\t' '{C = $1; n=$2; sum[C] += n;} END{for (C in sum)print C"\t"sum[C];}' ALL.bam.reads_mapped.ALL | awk -F "\t" '{print $1"\t"$2}' > reads_mapped_bysample
+##cut -f 1 ALL.bam.reads_mapped.ALL | sed -f reads_mapped_bysample - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
 
 ### get total of reads in each sample
 rm -f read_total_per_sample; touch read_total_per_sample
@@ -210,70 +241,32 @@ for f in $(cat ${input}); do
     seqkit stat -j $SLURM_CPUS_PER_TASK -T $READS | cut -f 1,4 | sed "/num_seqs/d" >> read_total_per_sample
 done
 
-sed 's/.*\///g' read_total_per_sample | awk -F "\t" '{print "s/^"$1"$/"$1"\\t"$2"/g"}' > tmp && mv tmp read_total_per_sample
+sed 's/.*\///g' read_total_per_sample | awk -F "\t" '{print $1"\t"$2}' > tmp && mv tmp read_total_per_sample
 
-cut -f 1 ALL.bam.reads_mapped.ALL | sed -f read_total_per_sample - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
+##cut -f 1 ALL.bam.reads_mapped.ALL | sed -f read_total_per_sample - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
 
 #### get contig lengths
 
 samtools faidx derep-contigs.fa
-cut -f 1,2 derep-contigs.fa.fai | awk -F "\t" '{print "s/^"$1"$/"$1"\\t"$2"/g"}' > contig_length
+cut -f 1,2 derep-contigs.fa.fai | awk -F "\t" '{print $1"\t"$2}' > contig_length
 
-cut -f 3 ALL.bam.reads_mapped.ALL | sed -f contig_length - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
+##cut -f 3 ALL.bam.reads_mapped.ALL | sed -f contig_length - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
 
-###########################################
-fi
-###########################################
-
-########################################## 
-if [[ "${step}" =~ "B" ]] || [[ "$step" =~ "b3" ]]; then
-###########################################
-
-########## add kaiju info
-awk -F "\t" '{print "s/^"$2"$/"$0"/g"}' derep-contigs.fa.kaiju.merge | sed 's/\t/\\t/g' > kaiju_fixer
-
-cut -f 3 ALL.bam.reads_mapped.ALL | sed -f kaiju_fixer - | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
-
-##### add bin_list if it exists
-if [ -f bin_list ]; then
-  awk -F "\t" '{print $3"______"$6"\t"$1}' bin_list | sed -e 's/ .*\t/\t/g' -e 's/.*\///g' | awk -F "\t" '{print "s/^"$1"$/"$2"/g"}' > tmp.binfixer
-
-  ##### set to replace contig names with no bin as NA
-  cut -f 3 ALL.bam.reads_mapped.ALL | sort -Vu > tmp.list
-  awk -F "\t" '{print $3"______"$6"\t"$1}' bin_list | sed -e 's/ .*\t/\t/g' -e 's/.*\///g' | cut -f 1 | sort -Vu | cat - tmp.list | sort -V | uniq -u | awk -F "\t" '{print "s/^"$1"$/NA/g"}' >> tmp.binfixer
-
-  cut -f 3 ALL.bam.reads_mapped.ALL | sed -f tmp.binfixer - | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
-fi
-
-#### if no binning info, jsut enter NA
-if ! [ -f bin_list ]; then
-    sed -i 's/$/\tNA/g' ALL.bam.reads_mapped.ALL
-fi
 
 #### headers
-sed -i -z "s/^/\
-specific_read_source\t\
-num_specific_read_source_reads_mapped_to_specific_contig\t\
-specific_contig\t\
-total_num_reads_mapped_to_specific_contig_from_all_read_sources\t\
-total_num_reads_mapped_to_all_contigs_from_specific_read_source\t\
-num_reads_in_specific_read_source\t\
-specific_contig_length\t\
-kaiju_C_or_U\t\
-kaiju_specific_contig\t\
-kaiju_taxid\t\
-kaiju_score\t\
-kaiju_taxids_all\t\
-kaiju_accessions\t\
-kaiju_aligned_seq\t\
-kaiju_taxonomy\t\
-bin_of_specific_contig\t\
-\n/g" ALL.bam.reads_mapped.ALL
+
+sed -i -z 's/^/specific_read_source\tnum_specific_read_source_reads_mapped_to_specific_contig\tspecific_contig\n/g' ALL.bam.reads_mapped.ALL
+sed -i -z 's/^/specific_contig\ttotal_num_reads_mapped_to_specific_contig_from_all_read_sources\n/g' reads_mapped_bycontig
+sed -i -z 's/^/specific_read_source\ttotal_num_reads_mapped_to_all_contigs_from_specific_read_source\n/g' reads_mapped_bysample
+sed -i -z 's/^/specific_read_source\tnum_reads_in_specific_read_source\n/g' read_total_per_sample
+sed -i -z 's/^/specific_contig\tspecific_contig_length\n/g' contig_length
 
 
-#####################################
+
+###########################################
 fi
-#####################################
+###########################################
+
 
 ##########################################
 if [[ "${step}" =~ "B" ]] || [[ "$step" =~ "b4" ]]; then
@@ -281,17 +274,17 @@ if [[ "${step}" =~ "B" ]] || [[ "$step" =~ "b4" ]]; then
 
 ########### breadth of coverage
 
-for f in tmp.mapping/*.bam; do
-N=$(basename $f)
-samtools index $f
+#for f in tmp.mapping/*.bam; do
+#N=$(basename $f)
+#samtools index $f
 
 ## get contig lengths
-samtools idxstats $f | cut -f 1,2 | sed '/^\*/d' > ${f}.idxstats
+#samtools idxstats $f | cut -f 1,2 | sed '/^\*/d' > ${f}.idxstats
 
 ## total coverage per base for each contig
-samtools depth $f | awk -F "\t" -v N=$N '{print N"\t"$0}' > ${f}.samtoolsdepth
+#samtools depth $f | awk -F "\t" -v N=$N '{print N"\t"$0}' > ${f}.samtoolsdepth
 
-done
+#done
 
 ## contig length fix
 rm -f tmp.ALLcontig; touch tmp.ALLcontig
@@ -300,18 +293,20 @@ sort -Vu tmp.ALLcontig -o tmp.ALLcontig
 
 ## get total number of bases covered at MIN_COVERAGE_DEPTH or higher PER contig
 rm -f tmp.ALLstats.list.count0 tmp.ALLstats.list.count1 tmp.ALLstats.list.count2 tmp.ALLstats.list.count3; touch tmp.ALLstats.list.count0 tmp.ALLstats.list.count1 tmp.ALLstats.list.count2 tmp.ALLstats.list.count3
+rm -f tmp.ALLstats.list.count0.5; touch tmp.ALLstats.list.count0.5
+
 for f in tmp.mapping/*.samtoolsdepth; do
     cut -f 1,2 $f | sort -Vu >> tmp.ALLstats.list.count0
-    awk '$4 >= 5' $f | cut -f 1,2 | sort -V | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' >> tmp.ALLstats.list.count1
-    awk '$4 >= 10' $f | cut -f 1,2 | sort -V | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' >> tmp.ALLstats.list.count2
-    awk '$4 >= 100' $f | cut -f 1,2 | sort -V | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' >> tmp.ALLstats.list.count3
+    awk '$4 >= 5' $f | cut -f 1,2 >> tmp.ALLstats.list.count1
+    awk '$4 >= 10' $f | cut -f 1,2 >> tmp.ALLstats.list.count2
+    awk '$4 >= 100' $f | cut -f 1,2 >> tmp.ALLstats.list.count3
 done
 
-### 1X coverage
-rm -f tmp.ALLstats.list.count0.5; touch tmp.ALLstats.list.count0.5
-for f in tmp.mapping/*.samtoolsdepth; do
-    cut -f 1,2 $f | sort -V | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' >> tmp.ALLstats.list.count0.5
-done
+sort -V tmp.ALLstats.list.count0 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats.list.count0.5
+sort -V tmp.ALLstats.list.count1 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count1
+sort -V tmp.ALLstats.list.count2 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count2
+sort -V tmp.ALLstats.list.count3 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count3
+
 
 ## add headers
 sed -i 's/\.bam\t/\t/g' tmp.ALLcontig
@@ -352,14 +347,14 @@ for F in $(echo ${reference} | sed 's/,/\n/g'); do
 done
 bash run_mapping_vs_ref
 
-#####################################
-fi
-#####################################
-
 ISJOBRUNNING=$(squeue --me | grep -s "wrap" | wc -l); 
 until [[ $ISJOBRUNNING -le 0 ]]; do 
     sleep 1m; ISJOBRUNNING=$(squeue --me | grep -s "wrap" | wc -l);
 done;
+
+#####################################
+fi
+#####################################
 
 ##########################################
 if [[ "${step}" =~ "C" ]] || [[ "$step" =~ "c1" ]] && [[ ! "$reference" == "" ]]; then
@@ -459,56 +454,88 @@ sed -i -z 's/^/specific_read_source\ttotal_mapped_reads\n/g' ALL.mapping.ref.tot
 fi
 #####################################
 
-
-
 ########################################################
 ########################################################
-## refining of bins - completely optional
-##########################################
-if [[ "${step}" =~ "D" ]] || [[ "$step" =~ "d1" ]]; then
+########################################################
+########################################################
+
+########################################## get bin info for anvio run (repeat for each binning run you want to include frmo within main folder - concatenate them into a single "bin_list" and run rest of script using that)
+if [[ "$step" =~ "d1" ]]; then
+###########################################
+rm -f bin_list; touch bin_list
+
+for f in $(find */bin_by_bin/* -name "*-contigs.fa"); do
+    B=$(echo $(basename $PWD)"___"$(basename $f) | sed -e 's/-contigs\.fa//g' -e 's/-SUMMARY___/___/g')
+    grep ">" $f | sed "s/>/$B\t/g"
+done >> bin_list
+
+sed -e 's/;\|\t/,/g' -e 's/\//;/g' ${input} | awk -F"," '{print "s/^"$3"$/"$0"/g"}' > tmp.fixer.input
+cut -f 2 bin_list | sed -E 's/contig_(.+)_[0-9]+$/\1/g' | sed -f tmp.fixer.input - | paste bin_list - | sed -e 's/,/\t/g' -e 's/;/\//g' > tmp && mv tmp bin_list
+
+sed -i 's/;/,/g' bin_list
+
+awk -F "\t" '{print "s/^"$1"$/"$2"/g"}' *.deflinekey > tmp.fixer
+
+cut -f 2 bin_list | sed -f tmp.fixer - | paste bin_list - > tmp && mv tmp bin_list
+
+sort -t $'\t' -k 5,5V bin_list -o bin_list
+
+awk -F "\t" '{print $3"______"$6}' bin_list | sed 's/.*\///g' | paste bin_list - > tmp && mv tmp bin_list
+
+
+awk -F "\t" 'BEGIN{OFS=FS} { gsub(/ .*/," ", $7) }1' bin_list > tmp.bin_list && mv tmp.bin_list bin_list
+awk -F "\t" 'BEGIN{OFS=FS} { gsub(/ .*/," ", $6) }1' bin_list > tmp.bin_list && mv tmp.bin_list bin_list
+sed -z -i 's/^/AnvioBin\tContigNameBin\tContigPath\tReadPath\tSampleNameBin\tContigNameCanu\tContigNameDerep\n/g' bin_list
+
+###########################################
+fi
 ###########################################
 
-##### list all of the binned contigs files
-find */bin_by_bin/* -name "*-contigs.fa" > tmp.list.binned_contigs
-## AND then remove contigs not be included in analyses from tmp.list.binned_contigs
-
-#### get the binned contigs only
-rm -f tmp.binned_contigs; touch tmp.binned_contigs;
-for f in $(cat tmp.list.binned_contigs | sort -Vu); do
-    cat $f >> tmp.binned_contigs
-done
-
-############# cluster at 90 % sequence ID over 80 % of length (of the shorter sequence in pairwise comparison) [Zayed et al. 2022, Science 376, 156-162]
-mmseqs easy-cluster tmp.binned_contigs binned_contigs-mmseqs tmp.cluster.binned_contigs --min-seq-id 0.9 -c 0.8 --cov-mode 5
 
 
-### give mmseqs clusters group names
-awk -F "\t" '{if($1 == $2) print $1}' binned_contigs-mmseqs_cluster.tsv > binned_contigs-cogs.tsv
-counter=1
-while IFS=$'\t' read -r line; do
-    group=$(printf '%03d' $counter)
-    echo "/^$line\\t/ s/$/\tcog$group/g"
-    ((counter++))
-done < binned_contigs-cogs.tsv | sed -f - binned_contigs-mmseqs_cluster.tsv > tmp && mv tmp binned_contigs-cogs.tsv
+########################################################
+########################################################
+########################################################
+########################################################
 
-cut -f 3 binned_contigs-cogs.tsv | sort -V | uniq -c | sed -E 's/^ +(.+) (.+)/\/\\t\2\$\/ s\/$\/\\t\1\/g/g' | sed -f - binned_contigs-cogs.tsv | cut -f 2-4 > tmp_binned_contigs-cogs.tsv && mv tmp_binned_contigs-cogs.tsv binned_contigs-cogs.tsv
 
-######## first the bins need to be grouped together, if multiple bins were classified by same taxa
-cut -f 16 ALL.bam.reads_mapped.ALL | sed -E -e 's/(.+_Bin_[0-9]+)(.*)/\2/g' -e 's/^_//g' -e 's/bin_of_specific_contig/superbin_of_specific_contig/g' > tmp.superbins
+########################################## run checkv
+if [[ "${step}" =~ "E" ]] || [[ "$step" =~ "e1" ]]; then
+###########################################
 
-echo "check the superbin names below and change as needed in the tmp.superbins file (sed -i is convenient). Contigs within a superbin will be clustered with mmseqs to refine the bins and separate viruses by "
-sort -Vu tmp.superbins
+checkv end_to_end all-contigs.fa checkv_out -t $THREADS -d /panfs/jay/groups/27/dcschroe/shared/checkv-db-v1.5
 
-##############################################################
+###########################################
 fi
-##############################################################
+###########################################
 
 
+########################################## download local
+if [[ "${step}" == "download" ]]; then
+###########################################
+rm -fr download_Spillover_FINAL; mkdir download_Spillover_FINAL
+cp ALL.bam.reads_mapped.ALL download_Spillover_FINAL/
+cp reads_mapped_bycontig download_Spillover_FINAL/
+cp reads_mapped_bysample download_Spillover_FINAL/
+cp read_total_per_sample download_Spillover_FINAL/
+cp contig_length download_Spillover_FINAL/
+cp tmp.ALLcontig download_Spillover_FINAL/ 
+cp tmp.ALLstats.list.count0 download_Spillover_FINAL/ 
+cp tmp.ALLstats.list.count1 download_Spillover_FINAL/ 
+cp tmp.ALLstats.list.count2 download_Spillover_FINAL/ 
+cp tmp.ALLstats.list.count3 download_Spillover_FINAL/ 
+cp bin_list download_Spillover_FINAL/ 
+cp bin_mmseq download_Spillover_FINAL/ 
+cp ALL.mapping.ref.meanwindowdepth download_Spillover_FINAL/ 
+cp ALL.mapping.ref.idxstats download_Spillover_FINAL/ 
+cp ALL.mapping.ref.totalmapped download_Spillover_FINAL/ 
+cp checkv_out/*.tsv download_Spillover_FINAL/ 
+cp SeqsRemovedByClustering download_Spillover_FINAL/
+cp *_AllContigs.dmnd.blastx download_Spillover_FINAL/
+cp all-contigs.fa.kaiju.*.names download_Spillover_FINAL/
 
+#scp -r dmckeow@agate.msi.umn.edu:/panfs/jay/groups/27/dcschroe/dmckeow/data/Spillover_FINAL/download_Spillover_FINAL/ /mnt/c/Users/Dean\ Mckeown/Downloads/
 
-
-
-
-
-
-
+###########################################
+fi
+###########################################

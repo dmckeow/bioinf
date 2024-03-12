@@ -36,7 +36,7 @@ set.seed(1234)
 ############## IMPORT DATASHEETS ###############
 ################################################
 setwd("C:/Users/Dean Mckeown/Downloads")
-setwd("C:/Users/Dean Mckeown/Downloads/download_Spillover_test_barcodes_15FEB24DM1")
+setwd("C:/Users/Dean Mckeown/Downloads/download_Spillover_FINAL")
 
 df <- read.csv("ALL.bam.reads_mapped.ALL", header=TRUE, sep="\t")
 dfmd <- read_sheet("https://docs.google.com/spreadsheets/d/1yDaJm30o-FcLEIP2iyX3JHZAzWVvFCbxjxdfXqnR73w/edit?pli=1#gid=0")
@@ -48,10 +48,29 @@ bas_1 <- read.csv("tmp.ALLstats.list.count1", header=TRUE, sep="\t")
 bas_2 <- read.csv("tmp.ALLstats.list.count2", header=TRUE, sep="\t")
 bas_3 <- read.csv("tmp.ALLstats.list.count3", header=TRUE, sep="\t")
 
+### binning info
+BinList <- read.csv("bin_list", header=TRUE, sep="\t")
+BinMmseq <- read.csv("bin_mmseq", header=TRUE, sep="\t")
+BinListMmseq <- merge(BinList, BinMmseq, by.x="ContigNameDerep", by.y="ContigNameDerep", all.x=TRUE)
+write.csv(BinListMmseq, "BinListMmseq.csv", row.names = FALSE)
+
+## other info
+SeqsRemovedByClustering <- read.csv("SeqsRemovedByClustering", header=TRUE, sep="\t")
+
 ################# CONTIG coverage across length visualisation vs REF genomes
 map_win <- read.csv("ALL.mapping.ref.meanwindowdepth", header=TRUE, sep="\t")
 map_ref <- read.csv("ALL.mapping.ref.idxstats", header=TRUE, sep="\t")
 map_ref_tot <- read.csv("ALL.mapping.ref.totalmapped", header=TRUE, sep="\t")
+
+############### checkv outputs
+CVCompleteGenomes <- read.csv("complete_genomes.tsv", header=TRUE, sep="\t")
+CVCompleteness <- read.csv("completeness.tsv", header=TRUE, sep="\t")
+CVContamination <- read.csv("contamination.tsv", header=TRUE, sep="\t")
+CVQualitySummary <- read.csv("quality_summary.tsv", header=TRUE, sep="\t")
+
+
+######### bring together summary of contigs
+BinListMmseqCVQualitySummary <- merge(BinListMmseq, CVQualitySummary, by.x="ContigNameDerep", by.y="contig_id", all.x=TRUE)
 
 ################################################
 ############## WRANGLE DATASHEETS ##############
@@ -141,6 +160,12 @@ df_con_counts <- subset(df_con, select = c(n_contigs_per_taxa_per_sample, specif
 
 df_con_counts <- df_con_counts %>% distinct()
 
+
+BinListMmseqCVQualitySummaryKaijuMetadata <- merge(BinListMmseqCVQualitySummary, df_con, by.x="ContigNameDerep", by.y="specific_contig", all.x=TRUE)
+BinListMmseqCVQualitySummaryKaijuMetadata <- merge(BinListMmseqCVQualitySummaryKaijuMetadata, dfmd, by.x="specific_contig_source", by.y=0, all.x=TRUE)
+BinListMmseqCVQualitySummaryKaijuMetadata <- merge(BinListMmseqCVQualitySummaryKaijuMetadata, SeqsRemovedByClustering, by.x="ContigNameDerep", by.y="contig", all.x=TRUE)
+
+write.csv(BinListMmseqCVQualitySummaryKaijuMetadata, "BinListMmseqCVQualitySummaryKaijuMetadata.csv", row.names = FALSE)
 
 ######################################################
 ######################################################
@@ -551,6 +576,9 @@ PCoA_collection_month <- PCoA_physeq %>%
 df_con_dfmd <- merge(df_con, dfmd, by.x="specific_contig_source", by.y=0)
 
 df_con_dfmd$seqrun <- gsub("__barcode.*", "", df_con_dfmd$specific_contig_source)
+
+
+
 
 ########## as categoryised coverage thresholds RIDGES
 #df_con_dfmd %>%
