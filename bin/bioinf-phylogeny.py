@@ -7,7 +7,8 @@ parser = argparse.ArgumentParser(description="Perform multiple sequence alignmen
 parser.add_argument("-i", "--input", help="Path to input fasta file(s). You can provide multiple paths to files, separated by spaces", required=True, nargs='+')
 parser.add_argument("-p", "--project", help="A name for your project - all output files will include this name", required=True)
 parser.add_argument("-b", "--bootstraps", help="Specifies the number of bootstrap replicates (default 1000).", type=int, default=1000)
-parser.add_argument("-N", "--nophylogeny", action='store_true', help="skip running iqtree phylogeny (default false)")
+parser.add_argument("-N", "--nophylogeny", action='store_true', help="just run alignment (default false)")
+parser.add_argument("-P", "--phylogenyonly", action='store_true', help="only run the phylogeny iqtree (default false)")
 parser.add_argument("-H", "--hyphy", action='store_true', help="Run hyphy GARD recombination analyses (default false)")
 parser.add_argument("-t", "--threads", help="number of threads to use for mafft (default=4)", type=int, default=4)
 
@@ -20,6 +21,7 @@ bootstraps = args.bootstraps
 
 ## step settings
 nophylogeny = args.nophylogeny
+phylogenyonly = args.phylogenyonly
 hyphy = args.hyphy
 
 ## generic settings
@@ -30,7 +32,7 @@ if SLURM_THREADS:
 	print(f'Threads set by SLURM --cpus-per-task: {THREADS}')
 
 ## set in-script variables
-tmp_file = "tmp." + project + ".fa"
+concat_fasta = project + ".fa"
 aln_file = project + ".aln"
 
 
@@ -41,17 +43,16 @@ def concatenate_files(input, output):
             with open(file, 'r') as infile:
                 outfile.write(infile.read())
 
-concatenate_files(input_files, tmp_file)
+if not nophylogeny:
+	concatenate_files(input_files, concat_fasta)
 
 # Perform multiple sequence alignment
-os.system(f"mafft --thread {THREADS} --adjustdirectionaccurately --auto --reorder --maxiterate 1000 {tmp_file} > {aln_file}")
-
-# Remove temporary files
-os.remove(tmp_file)
+if not phylogenyonly:
+	os.system(f"mafft --thread {THREADS} --adjustdirectionaccurately --auto --reorder --maxiterate 1000 {concat_fasta} > {aln_file}")
 
 # Do phylogeny
 if not nophylogeny:
-	os.system(f"iqtree -s {aln_file} -redo --prefix {project} -m MFP -B {bootstraps} -T {THREADS}")
+	os.system(f"iqtree -s {aln_file} --prefix {project} -m MFP -B {bootstraps} -T {THREADS}")
 
 ## RUN hyphy gard if flag provided
 if hyphy:

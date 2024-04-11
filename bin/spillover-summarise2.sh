@@ -171,11 +171,22 @@ done < bin_mmseq | sed -f - binned_contigs-mmseqs_cluster.tsv > tmp && mv tmp bi
 
 cut -f 3 bin_mmseq | sort -V | uniq -c | sed -E 's/^ +(.+) (.+)/\/\\t\2\$\/ s\/$\/\\t\1\/g/g' | sed -f - bin_mmseq | cut -f 2-4 > tmp_bin_mmseq && mv tmp_bin_mmseq bin_mmseq
 
-
+sed -i -z 's/^/Contig\tMmseqCluster\tNumInMmseqCluster\n/g' bin_mmseq
 
 for f in ${bioinfdb}/DMND/*; do
     diamond blastx --range-culling --max-target-seqs 1 -F 15 --evalue 1e-20 --sensitive -p $THREADS -d $f -q all-contigs.fa -f 6 -o $(basename $f .dmnd)_AllContigs.dmnd.blastx
 done
+
+
+for f in ${bioinfdb}/DMND/*; do
+    awk -F "\t" '!a[$1]++' $(basename $f .dmnd)_AllContigs.dmnd.blastx > tmp.$(basename $f .dmnd)_AllContigs.dmnd.blastx && mv tmp.$(basename $f .dmnd)_AllContigs.dmnd.blastx $(basename $f .dmnd)_AllContigs.dmnd.blastx
+    sed -i -z 's/^/qseqid\tsseqid\tpident\tlength\tmismatch\tgapopen\tqstart\tqend\tsstart\tsend\tevalue\tbitscore\n/g' $(basename $f .dmnd)_AllContigs.dmnd.blastx
+done
+
+
+
+samtools faidx all-contigs.fa; cut -f 1,2 all-contigs.fa.fai > AllContigLengths.tsv
+sed -i -z 's/^/Contig\tLength\n/g' AllContigLengths.tsv
 
 ###########################################
 fi
@@ -190,13 +201,10 @@ for f in "$bioinfdb"/KAIJU/*; do
     kaiju -t ${f}/nodes.dmp -f ${f}/*.fmi -i all-contigs.fa -o all-contigs.fa.kaiju.$(basename $f) -z $THREADS -v
     sort -t $'\t' -V -k 2,2 all-contigs.fa.kaiju.$(basename $f) -o all-contigs.fa.kaiju.$(basename $f)
     kaiju-addTaxonNames -t ${f}/nodes.dmp -n ${f}/names.dmp -i all-contigs.fa.kaiju.$(basename $f) -o all-contigs.fa.kaiju.$(basename $f).names -r superkingdom,phylum,order,class,family,genus,species
+    awk '{print $0"\t0\tNA\tNA\tNA\tNA"}' all-contigs.fa.kaiju.$(basename $f).names | cut -f 1-8 | sort -t $'\t' -k 2,2V -k 4,4nr | awk -F "\t" '!a[$2]++' | sed 's/0\tNA\tNA\tNA\tNA//g' > tmp.all-contigs.fa.kaiju.$(basename $f).names && mv tmp.all-contigs.fa.kaiju.$(basename $f).names all-contigs.fa.kaiju.$(basename $f).names
+    sed -i -z 's/^/kaiju_C_or_U\tkaiju_specific_contig\tkaiju_taxid\tkaiju_score\tkaiju_taxids_all\tkaiju_accessions\tkaiju_aligned_seq\tkaiju_taxonomy\n/g' all-contigs.fa.kaiju.$(basename $f).names
 done
 
-for f in all-contigs.fa.kaiju.*.names; do
-    awk '{print $0"\t0\tNA\tNA\tNA\tNA"}' all-contigs.fa.kaiju.*.names | cut -f 1-8 > tmp.$f && mv tmp.$f $f
-done
-
-sed -i -z 's/^/kaiju_C_or_U\tkaiju_specific_contig\tkaiju_taxid\tkaiju_score\tkaiju_taxids_all\tkaiju_accessions\tkaiju_aligned_seq\tkaiju_taxonomy\n/g' all-contigs.fa.kaiju.*.names
 
 
 #ISJOBRUNNING=$(squeue --me | grep -s "wrap" | wc -l); 
@@ -211,28 +219,7 @@ fi
 ########################################## STEP B2
 if [[ "${step}" =~ "B" ]] || [[ "$step" =~ "b2" ]]; then
 ###########################################
-   
-grep ">" derep-contigs.fa | sed -e 's/>//g' -e 's/ .*//g' > tmp.list
-    
-    for f in tmp.mapping/*.bam.reads_mapped; do
-        N=$(echo $f | sed -e 's/\.bam\.reads_mapped//g' -e 's/.*\///g')
-        cut -f 2 $f | grep -vwF -f - tmp.list | sed 's/^/0\t/g' > ${f}_2
-        cat $f >> ${f}_2
-        sed -i "s/^/$N\t/g" ${f}_2
-        sort -t $'\t' -k 3,3V ${f}_2 -o ${f}_2
-    done
-
-rm -f ALL.bam.reads_mapped.ALL; touch ALL.bam.reads_mapped.ALL
-cat tmp.mapping/*.bam.reads_mapped_2 >> ALL.bam.reads_mapped.ALL
-
-#### get reads mapped total per contig and by sample (that reads came from)
-
-awk -F'\t' '{C = $3; n=$2; sum[C] += n;} END{for (C in sum)print C"\t"sum[C];}' ALL.bam.reads_mapped.ALL | awk -F "\t" '{print $1"\t"$2}' > reads_mapped_bycontig
-##cut -f 3 ALL.bam.reads_mapped.ALL | sed -f reads_mapped_bycontig - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
-
-awk -F'\t' '{C = $1; n=$2; sum[C] += n;} END{for (C in sum)print C"\t"sum[C];}' ALL.bam.reads_mapped.ALL | awk -F "\t" '{print $1"\t"$2}' > reads_mapped_bysample
-##cut -f 1 ALL.bam.reads_mapped.ALL | sed -f reads_mapped_bysample - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
-
+       
 ### get total of reads in each sample
 rm -f read_total_per_sample; touch read_total_per_sample
 
@@ -243,29 +230,42 @@ done
 
 sed 's/.*\///g' read_total_per_sample | awk -F "\t" '{print $1"\t"$2}' > tmp && mv tmp read_total_per_sample
 
-##cut -f 1 ALL.bam.reads_mapped.ALL | sed -f read_total_per_sample - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
-
-#### get contig lengths
-
-samtools faidx derep-contigs.fa
-cut -f 1,2 derep-contigs.fa.fai | awk -F "\t" '{print $1"\t"$2}' > contig_length
-
-##cut -f 3 ALL.bam.reads_mapped.ALL | sed -f contig_length - | cut -f 2 | paste ALL.bam.reads_mapped.ALL - > tmp && mv tmp ALL.bam.reads_mapped.ALL
-
-
-#### headers
-
-sed -i -z 's/^/specific_read_source\tnum_specific_read_source_reads_mapped_to_specific_contig\tspecific_contig\n/g' ALL.bam.reads_mapped.ALL
-sed -i -z 's/^/specific_contig\ttotal_num_reads_mapped_to_specific_contig_from_all_read_sources\n/g' reads_mapped_bycontig
-sed -i -z 's/^/specific_read_source\ttotal_num_reads_mapped_to_all_contigs_from_specific_read_source\n/g' reads_mapped_bysample
 sed -i -z 's/^/specific_read_source\tnum_reads_in_specific_read_source\n/g' read_total_per_sample
-sed -i -z 's/^/specific_contig\tspecific_contig_length\n/g' contig_length
 
+############ cat the idxstats
+rm -f ALLSamples.idxstats; touch ALLSamples.idxstats
+for f in tmp.mapping/*.bam; do
+        N=$(echo $f | sed -e 's/\.bctrimmedreads\.fastq\.gz\.bam//g' -e 's/.*\///g')
+        samtools idxstats $f | sed "s/^/$N\t/g" >> ALLSamples.idxstats
+done
 
+awk -F "\t" '{if($4 >= 1) print $0}' ALLSamples.idxstats | sed -z 's/^/ReadSource\tContig\tContigLength\tNumReadsMapped\tNumUnmappedReads\n/g' > tmp.ALLSamples.idxstats && mv tmp.ALLSamples.idxstats ALLSamples.idxstats
 
 ###########################################
 fi
 ###########################################
+
+CoverageDepth () {
+for f in ${CoverageDepthInput}/*.bam; do
+    N=$(basename $f)
+    samtools index $f
+
+    ## get contig lengths
+    samtools idxstats $f | cut -f 1,2 | sed '/^\*/d' > ${f}.contiglengths
+
+    ## total coverage per base for each contig
+    samtools depth $f | awk -F "\t" -v N=$N '{print N"\t"$0}' > ${f}.samtoolsdepth
+
+done
+
+## contig length fix
+rm -f tmp.ALLcontig; touch tmp.ALLcontig
+cat tmp.mapping/*.contiglengths >> tmp.ALLcontig
+sort -Vu tmp.ALLcontig -o tmp.ALLcontig
+
+find CoverageDepthInput -type f -empty -print -delete
+
+}
 
 
 ##########################################
@@ -274,38 +274,28 @@ if [[ "${step}" =~ "B" ]] || [[ "$step" =~ "b4" ]]; then
 
 ########### breadth of coverage
 
-#for f in tmp.mapping/*.bam; do
-#N=$(basename $f)
-#samtools index $f
+CoverageDepthInput="tmp.mapping"
+CoverageDepth
 
-## get contig lengths
-#samtools idxstats $f | cut -f 1,2 | sed '/^\*/d' > ${f}.idxstats
-
-## total coverage per base for each contig
-#samtools depth $f | awk -F "\t" -v N=$N '{print N"\t"$0}' > ${f}.samtoolsdepth
-
-#done
-
-## contig length fix
-rm -f tmp.ALLcontig; touch tmp.ALLcontig
-cat tmp.mapping/*.idxstats >> tmp.ALLcontig
-sort -Vu tmp.ALLcontig -o tmp.ALLcontig
-
+cd $CoverageDepthInput
+sbatch --time=24:00:00 --cpus-per-task=12 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err --wrap='eval "$(conda shell.bash hook)"; conda activate bioinftools; Rscript /panfs/jay/groups/27/dcschroe/dmckeow/bioinf/bin/spillover-CovDepth.r'
+cd ..
+##### OBSOLETE - now do in R using normalised reads counts
 ## get total number of bases covered at MIN_COVERAGE_DEPTH or higher PER contig
-rm -f tmp.ALLstats.list.count0 tmp.ALLstats.list.count1 tmp.ALLstats.list.count2 tmp.ALLstats.list.count3; touch tmp.ALLstats.list.count0 tmp.ALLstats.list.count1 tmp.ALLstats.list.count2 tmp.ALLstats.list.count3
-rm -f tmp.ALLstats.list.count0.5; touch tmp.ALLstats.list.count0.5
+##rm -f tmp.ALLstats.list.count0 tmp.ALLstats.list.count1 tmp.ALLstats.list.count2 tmp.ALLstats.list.count3; touch tmp.ALLstats.list.count0 tmp.ALLstats.list.count1 tmp.ALLstats.list.count2 tmp.ALLstats.list.count3
+##rm -f tmp.ALLstats.list.count0.5; touch tmp.ALLstats.list.count0.5
 
-for f in tmp.mapping/*.samtoolsdepth; do
-    cut -f 1,2 $f | sort -Vu >> tmp.ALLstats.list.count0
-    awk '$4 >= 5' $f | cut -f 1,2 >> tmp.ALLstats.list.count1
-    awk '$4 >= 10' $f | cut -f 1,2 >> tmp.ALLstats.list.count2
-    awk '$4 >= 100' $f | cut -f 1,2 >> tmp.ALLstats.list.count3
-done
+##for f in tmp.mapping/*.samtoolsdepth; do
+  ##  cut -f 1,2 $f | sort -Vu >> tmp.ALLstats.list.count0
+   ## awk '$4 >= 5' $f | cut -f 1,2 >> tmp.ALLstats.list.count1
+    ##awk '$4 >= 10' $f | cut -f 1,2 >> tmp.ALLstats.list.count2
+    ##awk '$4 >= 100' $f | cut -f 1,2 >> tmp.ALLstats.list.count3
+##done
 
-sort -V tmp.ALLstats.list.count0 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats.list.count0.5
-sort -V tmp.ALLstats.list.count1 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count1
-sort -V tmp.ALLstats.list.count2 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count2
-sort -V tmp.ALLstats.list.count3 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count3
+##sort -V tmp.ALLstats.list.count0 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats.list.count0.5
+##sort -V tmp.ALLstats.list.count1 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count1
+##sort -V tmp.ALLstats.list.count2 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count2
+##sort -V tmp.ALLstats.list.count3 | uniq -c | sed -E 's/ +(.+) (.+)/\2\t\1/g' > tmp.ALLstats && mv tmp.ALLstats tmp.ALLstats.list.count3
 
 
 ## add headers
@@ -313,10 +303,10 @@ sed -i 's/\.bam\t/\t/g' tmp.ALLcontig
 sed -i 's/\.bam\t/\t/g' tmp.ALLstats.list.count*
 
 sed -i -z 's/^/contig\tcontig_length\n/1' tmp.ALLcontig
-sed -i -z 's/^/reads\tcontig\n/1' tmp.ALLstats.list.count0
-sed -i -z 's/^/reads\tcontig\ttotal_bases_over_5_coverage\n/1' tmp.ALLstats.list.count1
-sed -i -z 's/^/reads\tcontig\ttotal_bases_over_10_coverage\n/1' tmp.ALLstats.list.count2
-sed -i -z 's/^/reads\tcontig\ttotal_bases_over_100_coverage\n/1' tmp.ALLstats.list.count3
+##sed -i -z 's/^/reads\tcontig\n/1' tmp.ALLstats.list.count0
+##sed -i -z 's/^/reads\tcontig\ttotal_bases_over_5_coverage\n/1' tmp.ALLstats.list.count1
+##sed -i -z 's/^/reads\tcontig\ttotal_bases_over_10_coverage\n/1' tmp.ALLstats.list.count2
+##sed -i -z 's/^/reads\tcontig\ttotal_bases_over_100_coverage\n/1' tmp.ALLstats.list.count3
 
 
 #####################################
@@ -513,29 +503,116 @@ fi
 ########################################## download local
 if [[ "${step}" == "download" ]]; then
 ###########################################
-rm -fr download_Spillover_FINAL; mkdir download_Spillover_FINAL
-cp ALL.bam.reads_mapped.ALL download_Spillover_FINAL/
-cp reads_mapped_bycontig download_Spillover_FINAL/
-cp reads_mapped_bysample download_Spillover_FINAL/
-cp read_total_per_sample download_Spillover_FINAL/
-cp contig_length download_Spillover_FINAL/
-cp tmp.ALLcontig download_Spillover_FINAL/ 
-cp tmp.ALLstats.list.count0 download_Spillover_FINAL/ 
-cp tmp.ALLstats.list.count1 download_Spillover_FINAL/ 
-cp tmp.ALLstats.list.count2 download_Spillover_FINAL/ 
-cp tmp.ALLstats.list.count3 download_Spillover_FINAL/ 
-cp bin_list download_Spillover_FINAL/ 
-cp bin_mmseq download_Spillover_FINAL/ 
-cp ALL.mapping.ref.meanwindowdepth download_Spillover_FINAL/ 
-cp ALL.mapping.ref.idxstats download_Spillover_FINAL/ 
-cp ALL.mapping.ref.totalmapped download_Spillover_FINAL/ 
-cp checkv_out/*.tsv download_Spillover_FINAL/ 
-cp SeqsRemovedByClustering download_Spillover_FINAL/
-cp *_AllContigs.dmnd.blastx download_Spillover_FINAL/
-cp all-contigs.fa.kaiju.*.names download_Spillover_FINAL/
+RProjectFolder="RProject_Spillover_FINAL"
+rm -fr $RProjectFolder; mkdir $RProjectFolder
+cp ALLSamples.idxstats $RProjectFolder/
+cp SelfSamples.idxstats $RProjectFolder/
+cp read_total_per_sample $RProjectFolder/
+##cp tmp.ALLcontig $RProjectFolder/ 
+##cp tmp.ALLstats.list.count1 $RProjectFolder/ 
+##cp tmp.ALLstats.list.count2 $RProjectFolder/ 
+##cp tmp.ALLstats.list.count3 $RProjectFolder/ 
+cp bin_list $RProjectFolder/ 
+cp bin_mmseq $RProjectFolder/ 
+##cp ALL.mapping.ref.meanwindowdepth $RProjectFolder/ 
+##cp ALL.mapping.ref.idxstats $RProjectFolder/ 
+##cp ALL.mapping.ref.totalmapped $RProjectFolder/ 
+cp checkv_out/*.tsv $RProjectFolder/ 
+cp SeqsRemovedByClustering $RProjectFolder/
+cp *_AllContigs.dmnd.blastx $RProjectFolder/
+cp all-contigs.fa.kaiju.*.names $RProjectFolder/
+cp AllContigLengths.tsv $RProjectFolder/
 
-#scp -r dmckeow@agate.msi.umn.edu:/panfs/jay/groups/27/dcschroe/dmckeow/data/Spillover_FINAL/download_Spillover_FINAL/ /mnt/c/Users/Dean\ Mckeown/Downloads/
+cp tmp.mapping/AllSamtoolsDepthCovMappingByWindow.tsv $RProjectFolder/AllSamtoolsDepthCovMappingByWindow.tsv
+cp tmp.mapping.self/AllSamtoolsDepthCovMappingByWindow.tsv $RProjectFolder/SelfSamtoolsDepthCovMappingByWindow.tsv
+#scp -r dmckeow@agate.msi.umn.edu:/panfs/jay/groups/27/dcschroe/dmckeow/data/Spillover_FINAL/$RProjectFolder/ /mnt/c/Users/Dean\ Mckeown/Downloads/Spillover_FINAL/
 
+###########################################
+fi
+###########################################
+
+
+
+########################################## bin split
+if [[ "${step}" == "binsplit" ]]; then
+###########################################
+rm -fr ContigsBinsFinal; mkdir ContigsBinsFinal
+while IFS=$'\t' read -r SuperBin RepresentativeName; do
+    N=$(echo "${SuperBin}_${RepresentativeName}" | sed -E -e 's/[^a-zA-Z0-9_]/_/g' -e 's/_+/_/g' -e 's/^_|_$//g')
+    touch ContigsBinsFinal/$N.fa
+done < <(sed '1,1d' dfContigsManual.tsv | cut -f 8,9 | sort -Vu | sed -E '/Cellular;|ExcludedByLengthCutoff/d' )
+
+while IFS=$'\t' read -r contig SuperBin RepresentativeName; do
+    N=$(echo "${SuperBin}_${RepresentativeName}" | sed -E -e 's/[^a-zA-Z0-9_]/_/g' -e 's/_+/_/g' -e 's/^_|_$//g')
+    seqkit grep -p $contig derep-contigs.fa >> ContigsBinsFinal/$N.fa
+done < <(sed '1,1d' dfContigsManual.tsv | cut -f 1,8,9 | sed -E '/Cellular;|ExcludedByLengthCutoff/d' | sort -V -t $'\t' -k 2,3)
+
+
+
+###########################################
+fi
+###########################################
+
+
+
+
+
+
+###########################################
+if [[ "${step}" == "SelfmapRun" ]]; then
+###########################################
+
+for f in $(cat ${input}); do
+    READS=$(echo $f | cut -d ";" -f 2)
+    cp $READS tmp.derep/
+done
+
+#### dereplicate further by specific merged barcodes, using last contig in each row as merged file name
+sed -E -e 's/^(.*)\t(.*)$/\1\t\2.bctrimmedreads.fastq.gz > tmp \&\& mv tmp tmp.derep.merge\/\2/g' -e 's/^/zcat tmp.derep\//g' -e 's/$/.bctrimmedreads.fastq.gz/g' -e 's/\t/.bctrimmedreads.fastq.gz tmp.derep\//g' input_merge_bc > tmp.run_bc_merge
+bash tmp.run_bc_merge
+
+sed -E 's/^zcat (.*) >.*/rm -f \1/g' tmp.run_bc_merge > tmp.run_bc_merge.rm
+bash tmp.run_bc_merge.rm
+for f in tmp.derep.merge/*.bctrimmedreads.fastq.gz; do mv $f tmp.derep/ ; done
+
+#### ALL contigs vs ALL reads for each sample in the bin and count them per contig
+rm -fr tmp.mapping.self; mkdir tmp.mapping.self
+
+    #### prepare file to run mapping from
+    for f in $(cat ${input}); do
+        READS=$(echo $f | cut -d ";" -f 2 | sed 's/\.bctrimmedreads\.fastq\.gz//g')
+        Q="sbatch --time=24:00:00 --cpus-per-task=4 --mem=48GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err --wrap='eval \"\$(conda shell.bash hook)\"; conda activate bioinftools;"
+        R="'"
+        echo "$Q seqkit seq --min-len 200 tmp.derep/$(basename $READS).bctrimmedreads.fastq.gz | minimap2 -t \$SLURM_CPUS_PER_TASK -ax map-ont --secondary=no tmp.derep/$(basename $READS).contigs.fasta - | samtools view -h -F 2308 | samtools sort -O BAM - > tmp.mapping.self/$(basename $READS).bam$R"
+
+    done > run_mapping
+
+bash run_mapping
+
+###########################################
+fi
+###########################################
+
+###########################################
+if [[ "${step}" == "SelfmapCov" ]]; then
+###########################################
+
+#### get coverage depths across bases
+CoverageDepthInput="tmp.mapping.self"
+CoverageDepth
+
+############ cat the idxstats
+rm -f SelfSamples.idxstats; touch SelfSamples.idxstats
+for f in tmp.mapping.self/*.bam; do
+        N=$(echo $f | sed -e 's/\.bctrimmedreads\.fastq\.gz\.bam//g' -e 's/.*\///g')
+        samtools idxstats $f | sed "s/^/$N\t/g" >> SelfSamples.idxstats
+done
+
+awk -F "\t" '{if($4 >= 1) print $0}' SelfSamples.idxstats | sed -z 's/^/ReadSource\tContig\tContigLength\tNumReadsMapped\tNumUnmappedReads\n/g' > tmp.SelfSamples.idxstats && mv tmp.SelfSamples.idxstats SelfSamples.idxstats
+
+cd $CoverageDepthInput
+sbatch --time=24:00:00 --cpus-per-task=12 --mem=240GB --partition ag2tb -o slurm.%N.%j.out -e slurm.%N.%j.err --wrap='eval "$(conda shell.bash hook)"; conda activate bioinftools; Rscript /panfs/jay/groups/27/dcschroe/dmckeow/bioinf/bin/spillover-CovDepth.r'
+cd ..
 ###########################################
 fi
 ###########################################

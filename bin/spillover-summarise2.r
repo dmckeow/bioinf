@@ -39,6 +39,10 @@ setwd("C:/Users/Dean Mckeown/Downloads")
 setwd("C:/Users/Dean Mckeown/Downloads/download_Spillover_FINAL")
 
 df <- read.csv("ALL.bam.reads_mapped.ALL", header=TRUE, sep="\t")
+ReadsMappedByContig <- read.csv("reads_mapped_bycontig", header=TRUE, sep="\t")
+ReadsMappedBySample <- read.csv("reads_mapped_bysample", header=TRUE, sep="\t")
+ReadTotalPerSample <- read.csv("read_total_per_sample", header=TRUE, sep="\t")
+ContigLength <- read.csv("contig_length", header=TRUE, sep="\t")
 dfmd <- read_sheet("https://docs.google.com/spreadsheets/d/1yDaJm30o-FcLEIP2iyX3JHZAzWVvFCbxjxdfXqnR73w/edit?pli=1#gid=0")
 
 #### data for breadth of coverage
@@ -56,6 +60,10 @@ write.csv(BinListMmseq, "BinListMmseq.csv", row.names = FALSE)
 
 ## other info
 SeqsRemovedByClustering <- read.csv("SeqsRemovedByClustering", header=TRUE, sep="\t")
+RVDBv26_AllContigs.dmnd.blastx
+vog_AllContigs.dmnd.blastx
+all-contigs.fa.kaiju.nr_euk.names
+all-contigs.fa.kaiju.rvdb.names
 
 ################# CONTIG coverage across length visualisation vs REF genomes
 map_win <- read.csv("ALL.mapping.ref.meanwindowdepth", header=TRUE, sep="\t")
