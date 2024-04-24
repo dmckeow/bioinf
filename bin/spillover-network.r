@@ -37,8 +37,10 @@ ref.sam.metadata <<- lapply(ref.sam.metadata, as.character)
 ref.sam.metadata <<- data.frame(ref.sam.metadata)
 ref.sam.metadata$contig_length <<- as.numeric(ref.sam.metadata$contig_length)
 ref.sam.metadata$genus <<- ifelse(ref.sam.metadata$genus != "Apis" & ref.sam.metadata$genus != "Bombus", "Other", ref.sam.metadata$genus)
+ref.sam.metadata$genus <<- ifelse(is.na(ref.sam.metadata$genus), "Other", ref.sam.metadata$genus)
 ref.sam.metadata$Project <<- gsub("GenBank","NCBI",ref.sam.metadata$Project)
 ref.sam.metadata$Project <<- ifelse(ref.sam.metadata$Project != "NCBI", "Current study", ref.sam.metadata$Project)
+ref.sam.metadata$Project <<- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref.sam.metadata$Project)
 }
 
 ReadMatrix <- function(input_matrix) {
@@ -108,11 +110,10 @@ PlotNetwork <- function(color_var) {
 PrepForCytoscape <- function() {
 	network_df <<- as.data.frame(as.table(fastANI_matrix))
 	colnames(network_df) <<- c("from", "to", "weight")
-	network_df <<- network_df[network_df$weight != 0, ]
 	ref.sam.metadata.sample <<- network_df %>%
 		left_join(ref.sam.metadata, by = c('from' = 'contig')) %>%
-		left_join(ref.sam.metadata, by = c('to' = 'contig')) %>%
 		select(-to, -weight)
+	network_df <<- network_df[network_df$weight != 0, ]
 }
 
 PrepMetadata()
@@ -137,28 +138,68 @@ PrepMetadata()
 
 
 ################ OR jsut prep input files for cytoscape
-file_list <- list.files(path = "fastANI/", pattern="Apis_rhabdovirus.*.NoMmseqs.matrix", full.names=TRUE, recursive=FALSE)
+file_list <- list.files(path = "fastANI/", pattern="*.NoMmseqs.matrix", full.names=TRUE, recursive=FALSE)
 
 for (file in file_list) {
 	output_name <- gsub("fastANI/|\\.matrix", "", file)
  	ReadMatrix(file)
 	PrepForCytoscape()
-	write.csv(network_df, paste0(output_name, ".network.cytoscape.csv"), row.names = FALSE, quote = FALSE)
- 	write.csv(ref.sam.metadata.sample, paste0(output_name, ".metadata.cytoscape.csv"), row.names = FALSE, quote = FALSE)
+	write.table(network_df, paste0(output_name, ".network.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
+ 	write.table(ref.sam.metadata.sample, paste0(output_name, ".metadata.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
 }
 
 ########## concat all networks into a snigle csv (optional)
-file.remove("All.NoMmseqs.metadata.cytoscape.csv")
-file_list <- list.files(pattern="*.NoMmseqs.metadata.cytoscape.csv", full.names=TRUE, recursive=FALSE)
+file.remove("All.NoMmseqs.metadata.cytoscape.tsv")
+file_list <- list.files(pattern="*.NoMmseqs.metadata.cytoscape.tsv", full.names=TRUE, recursive=FALSE)
+### exclude other file to prevent duplicattion
+file_list <- file_list[ !grepl("Dicistroviridae.NoMmseqs..*|Iflaviridae_Iflavirus.NoMmseqs..*", file_list) ]
 
 # Initialize an empty dataframe to store concatenated data
 concatenated_data <- data.frame()
 
 # Loop through each file, read it, and concatenate it to the dataframe
 for (file in file_list) {
-  data <- read.csv(file, header = TRUE) # Adjust header argument based on your data
+  data <- read.table(file, header = TRUE, sep = "\t") # Adjust header argument based on your data
   concatenated_data <- rbind(concatenated_data, data)
 }
 
 # Write the concatenated data to a new CSV file
-write.csv(concatenated_data, "All.NoMmseqs.metadata.cytoscape.csv", row.names = FALSE)
+write.table(concatenated_data, "All.NoMmseqs.metadata.cytoscape.tsv", row.names = FALSE, quote = FALSE, sep = "\t")
+
+
+file.remove("All.NoMmseqs.network.cytoscape.tsv")
+file_list <- list.files(pattern="*.NoMmseqs.network.cytoscape.tsv", full.names=TRUE, recursive=FALSE)
+### exclude other file to prevent duplicattion
+file_list <- file_list[ !grepl("Dicistroviridae.NoMmseqs..*|Iflaviridae_Iflavirus.NoMmseqs..*", file_list) ]
+
+# Initialize an empty dataframe to store concatenated data
+concatenated_data <- data.frame()
+
+# Loop through each file, read it, and concatenate it to the dataframe
+for (file in file_list) {
+  data <- read.table(file, header = TRUE, sep = "\t") # Adjust header argument based on your data
+  concatenated_data <- rbind(concatenated_data, data)
+}
+
+# Write the concatenated data to a new CSV file
+write.table(concatenated_data, "All.NoMmseqs.network.cytoscape.tsv", row.names = FALSE, quote = FALSE, sep = "\t")
+
+##############################################################################
+############ prep the metadata for the protein blasts
+file_list <- list.files(path = "iprscansplit/", pattern="*.blastp", full.names=TRUE, recursive=FALSE)
+
+PrepForCytoscapeBlast <- function() {
+	blastp.ref.sam.metadata <<- blastp %>%
+		left_join(ref.sam.metadata, by = 'contig') %>%
+		select(-to, -pident, -length, -mismatch, -gapopen, -qstart, -qend, -sstart, -send, -evalue, -bitscore) %>%
+		distinct
+}
+
+
+for (file in file_list) {
+	output_name <- gsub("iprscansplit/|\\.blastp", "", file)
+	blastp <- read.table(file, header = TRUE, sep = "\t") # Adjust header argument based on your data
+	blastp$contig <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$from)
+	PrepForCytoscapeBlast()
+ 	write.table(blastp.ref.sam.metadata, paste0(output_name, ".blastp.metadata.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
+}

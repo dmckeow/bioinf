@@ -11,6 +11,7 @@ library(viridis)
 library(ggh4x)
 library(vegan)
 library(metagenomeSeq)
+library(cowplot)
 
 #library(ggridges)
 #library(ggalluvial)
@@ -327,46 +328,36 @@ taxa_obj_CSS_HM$CSSCountReadsMapped[taxa_obj_CSS_HM$CSSCountReadsMapped == 0] <-
 ###################################################
 ###################################################
 
+######### CHOOSE A FILTER
 
-FilterOutTaxaNonviralNonrnaNoninsect <- function(data){
+## filter retain only plants viruses
+TaxaFilter <- function(data){
       data %>%
       filter(!grepl('Cellular', SuperBin)) %>%
-      filter(!grepl('Alphaflexi', SuperBin)) %>%
-      filter(!grepl('Betaflexi', SuperBin)) %>%
+      filter(grepl('flexiviridae|Bromoviridae|Secoviridae', SuperBin)) %>%
+      mutate(SuperBin=gsub("; $", "", SuperBin)) %>%
+      mutate(SuperBin=gsub(".*; ", "", SuperBin)) %>%
+      mutate(SuperBin=gsub(";$", "", SuperBin))
+}
+
+#### filter retain only bee/insect viruses
+TaxaFilter <- function(data){
+      data %>%
+      filter(!grepl('Cellular', SuperBin)) %>%
+      filter(grepl('Chronic bee|Negevirus|Reovirales|Virgaviridae|Sinhaliviridae|Phasmaviridae|Rhabdoviridae|Permutotetraviridae|Partitiviridae|Picornavirales|Dicistroviridae|Iflaviridae', SuperBin)) %>%
       filter(!grepl('Secoviridae', SuperBin)) %>%
-      filter(!grepl('Monodnaviria', SuperBin)) %>%
-      filter(!grepl('Bromoviridae', SuperBin)) %>%
-      filter(!grepl('Nucleocytoviricota', SuperBin)) %>%
-      filter(!grepl('Naldaviricetes', SuperBin)) %>%
-      filter(!grepl('mellifera filamentous virus', SuperBin)) %>%
-      filter(!grepl('Retroviridae', SuperBin)) %>%
-      filter(!grepl('Flaviviridae', SuperBin)) %>%
-      filter(!grepl('Mitoviridae', SuperBin)) %>%
+      filter(!grepl('Turnip', RepresentativeName)) %>%
       filter(!grepl('clover', RepresentativeName)) %>%
       filter(!grepl('Amaranthus', RepresentativeName)) %>%
-      filter(!grepl('Tobamovirus', RepresentativeName)) %>%
-      filter(!grepl('Turnip', RepresentativeName)) %>%
       filter(!grepl('sativa', RepresentativeName)) %>%
-      filter(!grepl('rubodvirus', RepresentativeName)) %>%
       mutate(SuperBin=gsub("; $", "", SuperBin)) %>%
       mutate(SuperBin=gsub(".*; ", "", SuperBin)) %>%
       mutate(SuperBin=gsub(";$", "", SuperBin))
 }
 
-FilterTaxaKeyBeeViruses <- function(data){
-      data %>%
-      filter(grepl('Apis rhabdovirus|Chronic bee|Aparavirus|Triatovirus|nege-like virus|Hubei partiti|Unclassified phasmaviridae|Mayfield virus|orthoreovirus|Allermuir Hill|Bombus-associated virus Vir|Lake Sinai|sinaivirus|Iflavirus|iflavirus', RepresentativeName)) %>%
-      filter(!grepl('Sinai virus 3', RepresentativeName)) %>%
-      filter(!grepl('Sinai virus 6', RepresentativeName)) %>%
-      filter(!grepl('Bombus-associated virus Bun2', RepresentativeName)) %>%
-      mutate(SuperBin=gsub("; $", "", SuperBin)) %>%
-      mutate(SuperBin=gsub(".*; ", "", SuperBin)) %>%
-      mutate(SuperBin=gsub(";$", "", SuperBin))
-}
 
 taxa_obj_CSS_HM_p <- taxa_obj_CSS_HM %>%
-      FilterOutTaxaNonviralNonrnaNoninsect() %>%
-      FilterTaxaKeyBeeViruses() %>%
+      TaxaFilter() %>%
 ggplot(aes(x=Sample_metadata_code, y=RepresentativeName, fill=CSSCountReadsMapped)) + 
   geom_tile() +
   scale_fill_viridis(option="inferno", limits = c(1, 2000), oob = scales::oob_squish) +
@@ -380,6 +371,7 @@ theme(strip.placement = "outside") +
 theme(ggh4x.facet.nestline = element_line(colour = "black")) +
 labs(fill="# CSS norm. reads") +
 xlab("389 Apis samples, 137 Bombus samples")
+
 
 ggsave(plot=taxa_obj_CSS_HM_p, paste0("HeatmapReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
 ggsave(plot=taxa_obj_CSS_HM_p, paste0("HeatmapReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
@@ -402,18 +394,17 @@ library("patchwork")
 library("ggside")
 library("ggtext")
 
-df_taxaPCA <- df_taxa %>% FilterOutTaxaNonviralNonrnaNoninsect()
-df_taxaPCA <- df_taxaPCA %>% FilterTaxaKeyBeeViruses()
+
+df_taxaPCA <- df_taxa %>% TaxaFilter()
+
 df_taxaPCA <- as.matrix(df_taxaPCA, mode = "character")
 df_taxaPCA <- as.data.frame(df_taxaPCA)
 
-taxa_obj_CSS_PCA <- taxa_obj_CSS %>% select(-"Cellular; Unclassified", -"Cellular; Bacteria", -"Cellular; Arthropoda", -"Cellular; Eukaryota; Other") ## remove taxa we don't want in plot
-taxa_obj_CSS_PCA <- taxa_obj_CSS_PCA[apply(taxa_obj_CSS_PCA[,-1], 1, function(x) !all(x==0)),] ## remove rows that total to 0 (except first row)
+taxa_obj_CSS_PCA <- taxa_obj_CSS[apply(taxa_obj_CSS[,-1], 1, function(x) !all(x==0)),] ## remove rows that total to 0 (except first row)
 taxa_obj_CSS_PCA <- taxa_obj_CSS_PCA %>% t() %>% as.data.frame()
 taxa_obj_CSS_PCA <- taxa_obj_CSS_PCA %>% rownames_to_column("RepresentativeName")
 
 taxa_obj_CSS_PCA <- left_join(df_taxaPCA, taxa_obj_CSS_PCA, by="RepresentativeName") ## keep only taxa kept in the df_taxa
-
 
 taxa_obj_CSS_PCA <- taxa_obj_CSS_PCA %>% select(-SuperBin) ## remove cols we don't want in plot
 taxa_obj_CSS_PCA <- taxa_obj_CSS_PCA %>% column_to_rownames("RepresentativeName")
@@ -453,7 +444,10 @@ ggsave(plot=last_plot(), paste0("OrdinationIrisGenusVirusTaxaReadsMappedVsClassi
 ### plot various PCoA plots
 PlotOrdUnconsrained <- function() {
       PCoA_physeq %>%
-  ord_plot(color = "genus", alpha = 0.8, size = 3) +
+  ord_plot(color = "genus",
+      alpha = 0.8,
+      size = 3,
+      ) +
   ggside::theme_ggside_void() +
   theme(aspect.ratio = 1) +
   guides(fill = guide_legend(reverse = FALSE))
@@ -534,10 +528,23 @@ scale_color_manual(name = "Genus of flower collected from", values = c(
   "Chamaecrista" = "#b15928"  # dark brown
 ), na.value = "black")
 
-cowplot::plot_grid(Ord_main, Ord_main_yearlab, Ord_main_monthlab, Ord_main_dist, Ord_main_apiary, Ord_main_flowers, labels = c('A','B','C','D','E','F'))
+cowplot::plot_grid(Ord_main, Ord_main_yearlab, Ord_main_monthlab, Ord_main_dist, Ord_main_apiary, labels = c('A','B','C','D','E'))
 
 ggsave(plot=last_plot(), paste0("Ordination_OtherFactors_ReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
 ggsave(plot=last_plot(), paste0("Ordination_OtherFactors_ReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
+
+
+ PCA_main_taxa <- physeq %>%
+      tax_transform("clr", rank = "RepresentativeName") %>%
+      ord_calc(method="PCA"
+            ) %>%
+      ord_plot(
+            plot_taxa = TRUE,
+            color = "genus",
+            size = 3, alpha = 0.8,
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            constraint_vec_style  = vec_constraint(colour = "black")) +
+      theme(aspect.ratio = 1)
 
 #### Redundancy plot to test what variables contributed to communtiy similarity
 
@@ -568,7 +575,7 @@ RDS_time <- physeq %>%
             "Oct",
             "Nov"
             )) %>%
-      ord_plot(color = "genus", size = 3, alpha = 0.8, shape = "flower_or_colony", constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+      ord_plot(plot_taxa = TRUE, color = "genus", size = 3, alpha = 0.8, shape = "flower_or_colony", constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
       scale_shape_manual(values=c(15,16))
 
@@ -594,11 +601,12 @@ RDS_site <- physeq %>%
             "d_500",
             "d_1500"
             )) %>%
-      ord_plot(color = "genus", size = 3, alpha = 0.8, shape = "flower_or_colony", constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+      ord_plot(plot_taxa = TRUE, color = "genus", size = 3, alpha = 0.8, shape = "flower_or_colony", constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
       scale_shape_manual(values=c(15,16))
 
 RDS_flower <- physeq %>%
+      ps_filter(distance != "Colony") %>%
       ps_mutate(
             Solidago = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Solidago")),
             Agastache = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Agastache")),
@@ -609,8 +617,7 @@ RDS_flower <- physeq %>%
             Cirsium = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Cirsium")),
             Dalea = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Dalea")),
             Eutrochium = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Eutrochium")),
-            Chamaecrista = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Chamaecrista")),
-            flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower")
+            Chamaecrista = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Chamaecrista"))
             ) %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
       ord_calc(method="RDA", constraints = c(
@@ -625,33 +632,31 @@ RDS_flower <- physeq %>%
             "Eutrochium",
             "Chamaecrista"
             )) %>%
-      ord_plot(color = "genus", size = 3, alpha = 0.8, shape = "flower_or_colony", constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+      ord_plot(plot_taxa = 1:10, color = "genus", size = 3, alpha = 0.8,
+            tax_lab_style = constraint_lab_style(colour = "red", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_vec_style_all  = vec_constraint(colour = "red"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
       scale_shape_manual(values=c(15,16))
 
-cowplot::plot_grid(Ord_main, RDS_time, RDS_site, RDS_flower, labels = c('A','B','C','D'))
+cowplot::plot_grid(PCA_main_taxa, RDS_time, RDS_site, RDS_flower, labels = c('A','B','C','D'))
 
 ggsave(plot=last_plot(), paste0("Ordinations_Multiplot_ReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
 ggsave(plot=last_plot(), paste0("Ordinations_Multiplot_ReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
 
 ##############################################################################
-### Permanova via Microviz
+### Permanova via adonsi2
 
-aitchison_dists <- physeq %>%
-tax_transform("identity", rank="RepresentativeName") %>%
-dist_calc("aitchison")
+dfmd_PAN <- dfmd[dfmd$Sample_metadata_code %in% rownames(t(taxa_obj_CSS_PCA)), ] %>%
+      select(-seqrun, -real_analyses_name, -specific_read_source) %>%
+      distinct()
+permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_month * apiary * distance, data = dfmd_PAN, method="bray")
 
-aitchison_perm <- aitchison_dists %>%
-  dist_permanova(
-    seed = 1234, # for set.seed to ensure reproducibility of random process
-    n_processes = 8, n_perms = 999, # you should use at least 999!
-    variables = "genus * apiary * distance * collection_year * collection_month"
-  )
+permanova2 <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * apiary * distance * flower_genus, data = dfmd_PAN, method="bray", na.action = "na.omit")
 
-perm_result <- perm_get(aitchison_perm) %>% as.data.frame()
-
-info_get(aitchison_perm)
-write.csv(perm_result, "perm_result.csv", row.names = FALSE)
+write.table(permanova, "permanova.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
+write.table(permanova2, "permanova2.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
 
 #### composition plot
 CompoPlot <- function(filter_var) {
@@ -681,15 +686,18 @@ myPal <- tax_palette(
 
 topPal <- tax_palette(physeq, pal = "brewerPlus", rank = "RepresentativeName", n = 12, add = NA)
 names(topPal) <- sort(names(topPal))
-topPal["Other"] <- "white"
+topPal["Other"] <- "black"
 
-CompoPlot <- function(FILTER_VAR, TAXLEV, PALETTE) {
+CompoPlot <- function(FILTER_VAR, TAXLEV, MERGE, PALETTE) {
       physeq %>%
       ps_filter(genus == FILTER_VAR) %>%
       ps_mutate(
-            CompGroup = paste0(collection_year, collection_month, apiary, distance)
+            season = recode(collection_month, May = "Spring", June = "Summer", July = "Summer", August = "Summer", September = "Autumn", October = "Autumn", November = "Autumn"),
+            CompGroup = paste0(collection_year, season, apiary),
+            flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower"),
+            CompGroupForC = paste0(collection_year, flower_or_colony)
             ) %>%
-      phyloseq::merge_samples("CompGroup") %>%
+      phyloseq::merge_samples(MERGE) %>%
   comp_barplot(
     tax_level = TAXLEV, n_taxa = 12,
     bar_width = 0.7,
@@ -700,42 +708,44 @@ CompoPlot <- function(FILTER_VAR, TAXLEV, PALETTE) {
     sample_order = "bray",
     tax_order = names(PALETTE),
     other_name = "Other"
-
   )
 }
 
-CompoApis <- CompoPlot("Apis", "SuperBin", myPal)
-CompoBombus <- CompoPlot("Bombus", "SuperBin", myPal)
-CompoPlots <- c(CompoApis, CompoBombus)
+CompoApis <- CompoPlot("Apis", "SuperBin", "CompGroup", myPal)
+CompoBombus <- CompoPlot("Bombus", "SuperBin", "CompGroup", myPal)
 
-row_label_1 <- wrap_elements(panel = ggpubr::text_grob('Apis', rot=90))
-row_label_2 <- wrap_elements(panel = ggpubr::text_grob('Bombus', rot=90))
+CompoApisFC <- CompoPlot("Apis", "SuperBin", "CompGroupForC", myPal)
+CompoBombusFC <- CompoPlot("Bombus", "SuperBin", "CompGroupForC", myPal)
 
-patch <- patchwork::wrap_plots(CompoPlots, nrow = 2, guides = 'collect')
+CompoPlots <- c(CompoApis, CompoBombus, CompoApisFC, CompoBombusFC)
 
-(row_label_1 / row_label_2) | patch &
-      coord_flip() &
-      theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
+patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
+      plot_annotation(tag_levels = 'A')
+
+patch & coord_flip()
 
 ggsave(plot=last_plot(), paste0("BarplotCompositionReads_HigherTax_MappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
 ggsave(plot=last_plot(), paste0("BarplotCompositionReads_HigherTax_MappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
 
 
-CompoApis <- CompoPlot("Apis", "RepresentativeName", topPal)
-CompoBombus <- CompoPlot("Bombus", "RepresentativeName", topPal)
-CompoPlots <- c(CompoApis, CompoBombus)
+CompoApis <- CompoPlot("Apis", "RepresentativeName", "CompGroup", topPal)
+CompoBombus <- CompoPlot("Bombus", "RepresentativeName", "CompGroup", topPal)
 
-row_label_1 <- wrap_elements(panel = ggpubr::text_grob('Apis', rot=90))
-row_label_2 <- wrap_elements(panel = ggpubr::text_grob('Bombus', rot=90))
+CompoApisFC <- CompoPlot("Apis", "RepresentativeName", "CompGroupForC", topPal)
+CompoBombusFC <- CompoPlot("Bombus", "RepresentativeName", "CompGroupForC", topPal)
 
-patch <- patchwork::wrap_plots(CompoPlots, nrow = 2, guides = 'collect')
+CompoPlots <- c(CompoApis, CompoBombus, CompoApisFC, CompoBombusFC)
 
-(row_label_1 / row_label_2) | patch &
-      coord_flip() &
-      theme(axis.ticks.y = element_blank(), axis.text.y = element_blank())
+
+patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
+      plot_annotation(tag_levels = 'A')
+
+patch & coord_flip()
 
 ggsave(plot=last_plot(), paste0("BarplotCompositionReads_LowerTax_MappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
 ggsave(plot=last_plot(), paste0("BarplotCompositionReads_LowerTax_MappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
+
+
 
 ####### composition heatmap
   htmp <- physeq %>%
@@ -754,7 +764,8 @@ ggsave(plot=last_plot(), paste0("BarplotCompositionReads_LowerTax_MappedVsClassi
     )
   )
 
-DrawCompHeatmap <- function() {ComplexHeatmap::draw(
+DrawCompHeatmap <- function() {
+      ComplexHeatmap::draw(
   object = htmp, annotation_legend_list = attr(htmp, "AnnoLegends"),
   merge_legends = TRUE
 )
@@ -770,70 +781,187 @@ dev.off()
 ######### correlations heatmap
 
 # set up the data with numerical variables and filter to top taxa
-psq_many <- physeq %>%
+ReShapeCorrel <- function() {
+      physeq %>%
   ps_mutate(
-    Apis = if_else(genus == "Apis", true = 1, false = 0),
-    Bombus = if_else(genus == "Bombus", true = 1, false = 0),
-    distance = recode(distance, `1500` = 3, `500` = 2, `100` = 1, `Colony` = 0),
+      Apis = if_else(genus == "Apis", true = 1, false = 0),
+      Bombus = if_else(genus == "Bombus", true = 1, false = 0),
+      bimaculatus = if_else(species == "bimaculatus", true = 1, false = 0),
+      citrinus = if_else(species == "citrinus", true = 1, false = 0),
+      griseocollis = if_else(species == "griseocollis", true = 1, false = 0),
+      impatiens = if_else(species == "impatiens", true = 1, false = 0),
+      rufocinctus = if_else(species == "rufocinctus", true = 1, false = 0),
+      vagans = if_else(species == "vagans", true = 1, false = 0),
+    Colony = if_else(distance == "Colony", true = 1, false = 0),
+    d_100 = if_else(distance == "100", true = 1, false = 0),
+    d_500 = if_else(distance == "500", true = 1, false = 0),
+    d_1500 = if_else(distance == "1500", true = 1, false = 0),
     y_2021 = if_else(collection_year == "2021", true = 1, false = 0),
     y_2022 = if_else(collection_year == "2022", true = 1, false = 0),
     y_2023 = if_else(collection_year == "2023", true = 1, false = 0),
       Spring = ifelse(grepl("May", collection_month), 1, 0),
       Summer = ifelse(grepl("June|July|August", collection_month), 1, 0),
       Autumn = ifelse(grepl("September|October|November", collection_month), 1, 0),
-      s_Crosby = if_else(apiary == "Crosby", true = 1, false = 0),
-      s_Golf = if_else(apiary == "Golf", true = 1, false = 0),
-      s_Vet = if_else(apiary == "Vet", true = 1, false = 0),
-      f_Solidago = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Solidago")),
-            f_Agastache = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Agastache")),
-            #f_Lotus = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Lotus")),
-            f_Monarda = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Monarda")),
-            f_Trifolium = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Trifolium")),
-            f_Calamintha = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Calamintha")),
-            #f_Cirsium = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Cirsium")),
-            f_Dalea = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Dalea")),
-            f_Eutrochium = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Eutrochium"))
-            #f_Chamaecrista = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Chamaecrista"))
+      Crosby = if_else(apiary == "Crosby", true = 1, false = 0),
+      Golf = if_else(apiary == "Golf", true = 1, false = 0),
+      Vet = if_else(apiary == "Vet", true = 1, false = 0),
+Agastache= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Agastache")),
+Allium= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Allium")),
+Arctium= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Arctium")),
+Asclepias= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Asclepias")),
+Calamintha= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Calamintha")),
+Centaurea= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Centaurea")),
+Chamaecrista= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Chamaecrista")),
+Cirsium= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Cirsium")),
+Dalea= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Dalea")),
+Eutrochium= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Eutrochium")),
+Helianthus= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Helianthus")),
+Heliopsis= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Heliopsis")),
+Liatris= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Liatris")),
+Linaria= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Linaria")),
+Lotus= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Lotus")),
+Medicago= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Medicago")),
+Melilotus= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Melilotus")),
+Monarda= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Monarda")),
+Nepeta= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Nepeta")),
+Persicaria= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Persicaria")),
+Pycnanthemum= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Pycnanthemum")),
+Ratibida= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Ratibida")),
+Rudbeckia= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Rudbeckia")),
+Securigera= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Securigera")),
+Silphium= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Silphium")),
+Solidago= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Solidago")),
+Sonchus= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Sonchus")),
+Symphyotrichum= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Symphyotrichum")),
+Trifolium= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Trifolium")),
+Verbena= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Verbena"))
   )
+}
 
-psq_key <- physeq %>%
-  ps_mutate(
-    Apis = if_else(genus == "Apis", true = 1, false = 0),
-    Bombus = if_else(genus == "Bombus", true = 1, false = 0),
-    distance = recode(distance, `1500` = 3, `500` = 2, `100` = 1, `Colony` = 0),
-    y_2021 = if_else(collection_year == "2021", true = 1, false = 0),
-    y_2022 = if_else(collection_year == "2022", true = 1, false = 0),
-    y_2023 = if_else(collection_year == "2023", true = 1, false = 0),
-      Spring = ifelse(grepl("May", collection_month), 1, 0),
-      Summer = ifelse(grepl("June|July|August", collection_month), 1, 0),
-      Autumn = ifelse(grepl("September|October|November", collection_month), 1, 0)
-  )
+psq_many <- ReShapeCorrel()
+
+psq_many_Apis <- ReShapeCorrel() %>% 
+      ps_filter(genus == "Apis")
+
+psq_many_Bombus <- ReShapeCorrel() %>%
+      ps_filter(genus == "Bombus")
+
 
 
 #  draw the heatmap
-DrawCorHeatmap <- function(INPUT_PHYSEQ) {
+DrawCorHeatmap <- function(INPUT_PHYSEQ, VARS) {
       INPUT_PHYSEQ %>%
       cor_heatmap(
+      vars = VARS,
       grid_col = NA,
       tax_anno = taxAnnotation(
-      Prev. = anno_tax_prev()
-  )
+      Prev. = anno_tax_prev()),
+      var_anno = varAnnotation(
+            Abundance = anno_var_hist(fun = sum, size = grid::unit(15, "mm"))),
+      row_names_gp = grid::gpar(fontsize = 8),
+      column_names_gp = grid::gpar(fontsize = 8)
 )
 }
 
-png(paste0("HeatmapCorrelation_many_ReadsMappedVsClassifiedContigs", ".png"), width=18, height=12, res=300, unit="cm")
-DrawCorHeatmap(psq_many)
+correlhm_genusspecies <- DrawCorHeatmap(psq_many, c("Apis", "Bombus", "bimaculatus", "citrinus", "griseocollis", "impatiens", "rufocinctus", "vagans"))
+
+correlhmA_time <- DrawCorHeatmap(psq_many_Apis, c("y_2021", "y_2022", "y_2023", "Spring", "Summer", "Autumn"))
+correlhmB_time <- DrawCorHeatmap(psq_many_Bombus, c("y_2021", "y_2022", "y_2023", "Summer", "Autumn"))
+
+correlhmA_site <- DrawCorHeatmap(psq_many_Apis, c("Crosby", "Golf", "Vet", "Colony", "d_100", "d_500", "d_1500"))
+correlhmB_site <- DrawCorHeatmap(psq_many_Bombus, c("Crosby", "Golf", "Vet", "Colony", "d_100", "d_500", "d_1500"))
+
+correlhmA_flowers <- DrawCorHeatmap(psq_many_Apis, c(
+      "Agastache",
+      "Arctium",
+      "Asclepias",
+      "Calamintha",
+      "Chamaecrista",
+      "Cirsium",
+      "Dalea",
+      "Eutrochium",
+      "Heliopsis",
+      "Liatris",
+      "Linaria",
+      "Lotus",
+      "Medicago",
+      "Melilotus",
+      "Monarda",
+      "Nepeta",
+      "Pycnanthemum",
+      "Ratibida",
+      "Securigera",
+      "Solidago",
+      "Sonchus",
+      "Trifolium"
+))
+
+correlhmB_flowers <- DrawCorHeatmap(psq_many_Bombus, c(
+"Agastache",
+"Allium",
+"Asclepias",
+"Calamintha",
+"Chamaecrista",
+"Cirsium",
+"Dalea",
+"Eutrochium",
+"Helianthus",
+"Heliopsis",
+"Liatris",
+"Lotus",
+"Medicago",
+"Melilotus",
+"Monarda",
+"Nepeta",
+"Persicaria",
+"Pycnanthemum",
+"Rudbeckia",
+"Securigera",
+"Silphium",
+"Solidago",
+"Sonchus",
+"Symphyotrichum",
+"Trifolium"
+      ))
+
+correlhmA_time <- correlhmA_time %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
+correlhmB_time <- correlhmB_time %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
+
+correlhmA_site <- correlhmA_site %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
+correlhmB_site <- correlhmB_site %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
+
+correlhmA_flowers <- correlhmA_flowers %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
+correlhmB_flowers <- correlhmB_flowers %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
+
+png(paste0("correlhm_genusspecies", ".png"), width=18, height=16, res=300, unit="cm")
+correlhm_genusspecies
 dev.off()
-pdf(paste0("HeatmapCorrelation_many_ReadsMappedVsClassifiedContigs", ".pdf"), width=8, height=8)
-DrawCorHeatmap(psq_many)
+pdf(paste0("correlhm_genusspecies", ".pdf"), width=7, height=6)
+correlhm_genusspecies
 dev.off()
 
-png(paste0("HeatmapCorrelation_key_ReadsMappedVsClassifiedContigs", ".png"), width=18, height=12, res=300, unit="cm")
-DrawCorHeatmap(psq_key)
+png(paste0("correlhm_time", ".png"), width=36, height=16, res=300, unit="cm")
+cowplot::plot_grid(correlhmA_time, correlhmB_time, labels=c("A", "B"))
 dev.off()
-pdf(paste0("HeatmapCorrelation_key_ReadsMappedVsClassifiedContigs", ".pdf"), width=8, height=8)
-DrawCorHeatmap(psq_key)
+pdf(paste0("correlhm_time", ".pdf"), width=14, height=6)
+cowplot::plot_grid(correlhmA_time, correlhmB_time, labels=c("A", "B"))
 dev.off()
+
+png(paste0("correlhm_site", ".png"), width=36, height=16, res=300, unit="cm")
+cowplot::plot_grid(correlhmA_site, correlhmB_site, labels=c("A", "B"))
+dev.off()
+pdf(paste0("correlhm_site", ".pdf"), width=14, height=6)
+cowplot::plot_grid(correlhmA_site, correlhmB_site, labels=c("A", "B"))
+dev.off()
+
+png(paste0("correlhm_flowers", ".png"), width=48, height=16, res=300, unit="cm")
+cowplot::plot_grid(correlhmA_flowers, correlhmB_flowers, labels=c("A", "B"))
+dev.off()
+pdf(paste0("correlhm_flowers", ".pdf"), width=21, height=6)
+cowplot::plot_grid(correlhmA_flowers, correlhmB_flowers, labels=c("A", "B"))
+dev.off()
+
+
 
 ###################################################################################
 ###################################################################################
@@ -930,8 +1058,7 @@ CoverageDepths$RepresentativeName <- factor(CoverageDepths$RepresentativeName, l
 ########## as categoryised coverage thresholds SCATTER
 
 CoverageDepths %>% 
-      FilterOutTaxaNonviralNonrnaNoninsect() %>%
-      FilterTaxaKeyBeeViruses() %>%
+      TaxaFilter() %>%
       filter(Length > 1000) %>%
       filter(grepl('NO', WasContigRemovedByDerep)) %>% 
       filter(grepl('> 10x coverage', cov_category)) %>% 
@@ -957,35 +1084,51 @@ ggsave(plot=last_plot(), paste0("ScatterCoverageDepthAcrossContigsSelfReadsOnly"
 ggsave(plot=last_plot(), paste0("ScatterCoverageDepthAcrossContigsSelfReadsOnly", ".png"), dpi=300, scale=2, units = "cm")
 
 #### contig length only
-CoverageDepths_bp <- CoverageDepths %>% 
-      FilterOutTaxaNonviralNonrnaNoninsect() %>%
-      FilterTaxaKeyBeeViruses() %>%
+CoverageDepths_filt <- CoverageDepths %>% 
+      TaxaFilter() %>%
       filter(Length > 1000) %>%
       filter(grepl('NO', WasContigRemovedByDerep)) %>% 
       select(-percent_of_contig_len_with_over_nX_coverage, -cov_category, -total_bases_over_5_coverage, -total_bases_over_10_coverage, -total_bases_over_100_coverage) %>%
       distinct() %>%
-      #droplevels() %>%
-      #complete(genus, nesting(RepresentativeName, SuperBin), explicit = FALSE) %>%
-      #mutate(Length = ifelse(is.na(Length), 1000, Length)) %>%
-      ggplot(aes(Length, RepresentativeName, fill=genus, color = genus)) + 
-      geom_boxplot(position = position_dodge2(preserve = "single"), alpha = 1, linewidth = 1, outliers = FALSE) +
-      facet_grid(SuperBin ~ ., scales = "free_y", space = "free_y") +
-      theme(
-            strip.text.y.right = element_blank(), 
-            axis.text.x = element_text(angle = 90),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            axis.ticks.y = element_blank()
-            ) +
-      scale_x_continuous(limits = c(1000, 10000), breaks = seq(0, 10000, 1000)) + 
-      scale_color_manual(values = c("#630000", "#0a0a82"))
+      filter(!grepl('Chronic bee|Cripavirus|Aparavirus|partiti-like|permutotetra|rhabdovirus|Agassiz|Mayfield|Loch|hasma-related|interruptus|picorna-like|Lake Sinai virus 3|Lake Sinai virus 6|Lake Sinai virus 1|virus Reo1|Unclassified sinaivirus', RepresentativeName))
 
+CoverageDepths_filt$Length <- as.numeric(CoverageDepths_filt$Length)
 
+##### test if contig length range is different
+unique_viruses <- unique(CoverageDepths_filt$RepresentativeName)
+results <- list()
 
-taxa_obj_CSS_HM_p + CoverageDepths_bp + plot_layout(widths = c(4,1), guides = 'collect') + plot_annotation(tag_levels = 'A')
+for (virus in unique_viruses) {
+  # Perform Wilcoxon rank-sum test
+  result <- wilcox.test(Length ~ genus, 
+                        data = subset(CoverageDepths_filt, RepresentativeName == virus))
+  
+  # Store results in a list
+  results[[virus]] <- result
+}
 
-ggsave(plot=last_plot(), paste0("HeatmapReadsMappedVsClassifiedContigs_ContigBp", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("HeatmapReadsMappedVsClassifiedContigs_ContigBp", ".png"), dpi=300, scale=2, units = "cm")
+# Write results to a file
+output_file <- "wilcox_test_results.txt"
+sink(output_file)
+
+# Print results
+for (virus in unique_viruses) {
+  cat("Virus:", virus, "\n")
+  cat("W =", results[[virus]]$statistic, "\n")
+  cat("p-value =", results[[virus]]$p.value, "\n\n")
+}
+
+# Close the file connection
+sink()
+#################################
+
+CoverageDepths_filt %>% ggplot(aes(genus, Length, fill=genus, color = genus)) + 
+geom_beeswarm(size = 0.5) +
+facet_nested_wrap(. ~ SuperBin + RepresentativeName, scales = "free", ncol = 3) 
+
+ggsave(plot=last_plot(), paste0("ContigSizeBeeswarm", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("ContigSizeBeeswarm", ".png"), dpi=300, scale=2, units = "cm")
+
 ########################################################
 ########################################################
 

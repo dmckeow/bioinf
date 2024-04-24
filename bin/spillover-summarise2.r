@@ -760,7 +760,7 @@ theme(ggh4x.facet.nestline = element_line(colour = "black"))
   ##column_to_rownames("rowname") %>%
   ##t()
 
-dfmd_PAN <- dfmd[rownames(dfmd) %in% rownames(t(taxa_obj_CSS_PCA)), ]
+dfmd_PAN <- dfmd[dfmd$Sample_metadata_code %in% rownames(t(taxa_obj_CSS_PCA)), ]
 
 ### distance matrix 
 taxa_obj_CSS_PCA_dist <- vegdist(t(taxa_obj_CSS_PCA), method="bray")
