@@ -12,16 +12,7 @@ library(ggh4x)
 library(vegan)
 library(metagenomeSeq)
 library(cowplot)
-
-#library(ggridges)
-#library(ggalluvial)
-#library(forcats)
-#library(ggrepel)
-#library(reshape) #
-#library(plotrix) #
-#library(tidyr) #
-#library(viridisLite) #
-
+library(ggbeeswarm)
 
 theme_set(theme_bw())
 set.seed(1234)
@@ -30,24 +21,11 @@ set.seed(1234)
 ################################################
 ############## IMPORT DATASHEETS ###############
 ################################################
-### save.image(file = here("SpilloverFinal.RData"))
-### load(here("SpilloverFinal.RData"))
-
-###### once big data part is done, you can skip the following section and jsut import the big data frames
-## write.csv(dfMapping, here("dfMapping.csv"), row.names = FALSE)
-## write.csv(dfContigs, here("dfContigs.csv"), row.names = FALSE)
-
-## dfContigs <- read.csv(here("dfContigs.csv"), header=TRUE)
-## dfMapping <- read.csv(here("dfMapping.csv"), header=TRUE)
-
 
 ###### Info for mapping reads vs contigs
 ALLSamplesIdxstats <- read.csv(here("ALLSamples.idxstats"), header=TRUE, sep="\t")
 ReadTotalPerSample <- read.csv(here("read_total_per_sample"), header=TRUE, sep="\t")
 AllSamtoolsDepthCovMappingByWindow <- read.csv(here("AllSamtoolsDepthCovMappingByWindow.tsv"), header=TRUE, sep="\t")
-##ReadsMappedByContigTotalBasesOver5Cov <- read.csv(here("tmp.ALLstats.list.count1"), header=TRUE, sep="\t")
-##ReadsMappedByContigTotalBasesOver10Cov <- read.csv(here("tmp.ALLstats.list.count2"), header=TRUE, sep="\t")
-##ReadsMappedByContigTotalBasesOver100Cov <- read.csv(here("tmp.ALLstats.list.count3"), header=TRUE, sep="\t")
 
 SelfSamplesIdxstats <- read.csv(here("SelfSamples.idxstats"), header=TRUE, sep="\t")
 SelfSamtoolsDepthCovMappingByWindow <- read.csv(here("SelfSamtoolsDepthCovMappingByWindow.tsv"), header=TRUE, sep="\t")
@@ -373,8 +351,8 @@ labs(fill="# CSS norm. reads") +
 xlab("389 Apis samples, 137 Bombus samples")
 
 
-ggsave(plot=taxa_obj_CSS_HM_p, paste0("HeatmapReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=taxa_obj_CSS_HM_p, paste0("HeatmapReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigPL1", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigPL1", ".png"), dpi=300, scale=2, units = "cm")
 
 ###############################
 ###############################
@@ -393,6 +371,8 @@ library("microViz")
 library("patchwork")
 library("ggside")
 library("ggtext")
+
+Paired_pal <- RColorBrewer::brewer.pal(12, "Paired")[1:12]
 
 
 df_taxaPCA <- df_taxa %>% TaxaFilter()
@@ -438,8 +418,8 @@ PCoA_physeq <- physeq %>%
 PCoA_physeq %>% 
       ord_plot_iris(tax_level = "RepresentativeName", ord_plot = "above", anno_colour = "genus", n_taxa = 20)
 
-ggsave(plot=last_plot(), paste0("OrdinationIrisGenusVirusTaxaReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("OrdinationIrisGenusVirusTaxaReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL2", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL2", ".png"), dpi=300, scale=2, units = "cm")
 
 ### plot various PCoA plots
 PlotOrdUnconsrained <- function() {
@@ -450,7 +430,7 @@ PlotOrdUnconsrained <- function() {
       ) +
   ggside::theme_ggside_void() +
   theme(aspect.ratio = 1) +
-  guides(fill = guide_legend(reverse = FALSE))
+  scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
 }
 
 PlotOrdUnconsrainedOthers <- function(VAR) {
@@ -463,9 +443,6 @@ PlotOrdUnconsrainedOthers <- function(VAR) {
 }
 
 Ord_main <- PlotOrdUnconsrained()
-
-ggsave(plot=Ord_main, paste0("Ordination_Year_ReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=Ord_main, paste0("Ordination_Year_ReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
 
 
 ################ variations of normal unconstrained ordination plot with various factors labelled
@@ -530,8 +507,8 @@ scale_color_manual(name = "Genus of flower collected from", values = c(
 
 cowplot::plot_grid(Ord_main, Ord_main_yearlab, Ord_main_monthlab, Ord_main_dist, Ord_main_apiary, labels = c('A','B','C','D','E'))
 
-ggsave(plot=last_plot(), paste0("Ordination_OtherFactors_ReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("Ordination_OtherFactors_ReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL4", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL4", ".png"), dpi=300, scale=2, units = "cm")
 
 
  PCA_main_taxa <- physeq %>%
@@ -542,31 +519,54 @@ ggsave(plot=last_plot(), paste0("Ordination_OtherFactors_ReadsMappedVsClassified
             plot_taxa = TRUE,
             color = "genus",
             size = 3, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_vec_style_all  = vec_tax_all(colour = "grey30"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
             constraint_vec_style  = vec_constraint(colour = "black")) +
-      theme(aspect.ratio = 1)
+      theme(aspect.ratio = 1) +
+      scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
+cowplot::plot_grid(Ord_main, PCA_main_taxa, labels = c('A', 'B'))
+ggsave(plot=last_plot(), paste0("FigPL3", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL3", ".png"), dpi=300, scale=2, units = "cm")
 
 #### Redundancy plot to test what variables contributed to communtiy similarity
 
-RDS_time <- physeq %>%
+RDS_year <- physeq %>%
       ps_mutate(
             y_2021 = as.numeric(collection_year == "2021"),
             y_2022 = as.numeric(collection_year == "2022"),
-            y_2023 = as.numeric(collection_year == "2023"),
+            y_2023 = as.numeric(collection_year == "2023")
+            ) %>%
+      tax_transform("clr", rank = "RepresentativeName") %>%
+      ord_calc(method="RDA", constraints = c(
+            "y_2021",
+            "y_2022",
+            "y_2023"
+            )) %>%
+      ord_plot(plot_taxa = 1:5, color = "genus", size = 3, alpha = 0.8, shape = "collection_year", 
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_vec_style_all  = vec_tax_all(colour = "grey30"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+      theme(aspect.ratio = 1) +
+      stat_ellipse(aes(colour = collection_year), linewidth = 0.75) +
+scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "2021" = Paired_pal[3], "2022" = Paired_pal[4], "2023" = Paired_pal[5]))      
+
+#####
+month_shapes <- c("May" = 0, "June" = 1, "July" = 2, "August" = 3, "September" = 4, "October" = 5, "November" = 6)
+
+RDS_month <- physeq %>%
+      ps_mutate(
             May = as.numeric(collection_month == "May"),
             Jun = as.numeric(collection_month == "June"),
             Jul = as.numeric(collection_month == "July"),
             Aug = as.numeric(collection_month == "August"),
             Sep = as.numeric(collection_month == "September"),
             Oct = as.numeric(collection_month == "October"),
-            Nov = as.numeric(collection_month == "November"),
-            flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower")
+            Nov = as.numeric(collection_month == "November")
             ) %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
       ord_calc(method="RDA", constraints = c(
-            "y_2021",
-            "y_2022",
-            "y_2023",
             "May",
             "Jun",
             "Jul",
@@ -575,21 +575,26 @@ RDS_time <- physeq %>%
             "Oct",
             "Nov"
             )) %>%
-      ord_plot(plot_taxa = TRUE, color = "genus", size = 3, alpha = 0.8, shape = "flower_or_colony", constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+      ord_plot(plot_taxa = 1:5, color = "genus", size = 3, alpha = 0.8, shape = "collection_month", 
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_vec_style_all  = vec_tax_all(colour = "grey30"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
-      scale_shape_manual(values=c(15,16))
+      stat_ellipse(aes(colour = collection_month), linewidth = 0.75) +
+scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "May" = Paired_pal[3], "June" = Paired_pal[4], "July" = Paired_pal[5], "August" = Paired_pal[7], "September" = Paired_pal[8], "October" = Paired_pal[9], "November" = Paired_pal[10])) +
+scale_shape_manual(values = month_shapes)
 
-ggsave(plot=RDS_time, paste0("OrdinationRDS_Time_ReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=RDS_time, paste0("OrdinationRDS_Time_ReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
-
-RDS_site <- physeq %>%
+RDS_apiary <- physeq %>%
       ps_mutate(
             s_Crosby = as.numeric(apiary == "Crosby"),
             s_Golf = as.numeric(apiary == "Golf"),
             s_Vet = as.numeric(apiary == "Vet"),
-            d_100 = as.numeric(distance == "100"),
-            d_500 = as.numeric(distance == "500"),
-            d_1500 = as.numeric(distance == "1500"),
+            s_Colony3237 = as.numeric(apiary == "Colony3237"),
+            s_Colony34 = as.numeric(apiary == "Colony34"),
+            s_CoonRapids = as.numeric(apiary == "CoonRapids"),
+            s_CoonRapids1 = as.numeric(apiary == "CoonRapids1"),
+            s_Eagan = as.numeric(apiary == "Eagan"),
+            s_Woodbury = as.numeric(apiary == "Woodbury"),
             flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower")
             ) %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
@@ -597,13 +602,42 @@ RDS_site <- physeq %>%
             "s_Crosby",
             "s_Golf",
             "s_Vet",
+            "s_Colony3237",
+            "s_Colony34",
+            "s_CoonRapids",
+            "s_CoonRapids1",
+            "s_Eagan",
+            "s_Woodbury"
+            )) %>%
+      ord_plot(plot_taxa = 1:5, color = "genus", size = 3, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_vec_style_all  = vec_tax_all(colour = "grey30"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+      theme(aspect.ratio = 1) +
+      stat_ellipse(aes(colour = apiary), linewidth = 0.75) +
+scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "Crosby" = Paired_pal[3], "Golf" = Paired_pal[4], "Vet" = Paired_pal[5], "Colony3237" = Paired_pal[7], "Colony34" = Paired_pal[8], "CoonRapids" = Paired_pal[9], "CoonRapids1" = Paired_pal[10], "Eagan" = Paired_pal[11], "Woodbury" = Paired_pal[12]))
+
+RDS_distance <- physeq %>%
+      ps_mutate(
+            d_100 = as.numeric(distance == "100"),
+            d_500 = as.numeric(distance == "500"),
+            d_1500 = as.numeric(distance == "1500"),
+            d_Colony = as.numeric(distance == "Colony")
+            ) %>%
+      tax_transform("clr", rank = "RepresentativeName") %>%
+      ord_calc(method="RDA", constraints = c(
             "d_100",
             "d_500",
-            "d_1500"
+            "d_1500",
+            "d_Colony"
             )) %>%
-      ord_plot(plot_taxa = TRUE, color = "genus", size = 3, alpha = 0.8, shape = "flower_or_colony", constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+      ord_plot(plot_taxa = 1:5, color = "genus", size = 3, alpha = 0.8, shape = "distance",
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_vec_style_all  = vec_tax_all(colour = "grey30"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
-      scale_shape_manual(values=c(15,16))
+      stat_ellipse(aes(colour = distance), linewidth = 0.75) +
+scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "100" = Paired_pal[3], "500" = Paired_pal[4], "1500" = Paired_pal[5], "Colony" = Paired_pal[7]))
 
 RDS_flower <- physeq %>%
       ps_filter(distance != "Colony") %>%
@@ -632,18 +666,24 @@ RDS_flower <- physeq %>%
             "Eutrochium",
             "Chamaecrista"
             )) %>%
-      ord_plot(plot_taxa = 1:10, color = "genus", size = 3, alpha = 0.8,
-            tax_lab_style = constraint_lab_style(colour = "red", type = "text", fontface = "bold", max_angle = 90, size = 3),
-            tax_vec_style_all  = vec_constraint(colour = "red"),
+      ord_plot(plot_taxa = FALSE, color = "genus", size = 3, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_vec_style_all  = vec_tax_all(colour = "red"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
             constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
-      scale_shape_manual(values=c(15,16))
+      scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
 
-cowplot::plot_grid(PCA_main_taxa, RDS_time, RDS_site, RDS_flower, labels = c('A','B','C','D'))
 
-ggsave(plot=last_plot(), paste0("Ordinations_Multiplot_ReadsMappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("Ordinations_Multiplot_ReadsMappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
+cowplot::plot_grid(RDS_year, RDS_month, labels = c('A','B'))
+
+ggsave(plot=last_plot(), paste0("FigPL14", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL14", ".png"), dpi=300, scale=2, units = "cm")
+
+cowplot::plot_grid(RDS_apiary, RDS_distance, RDS_flower, labels = c('A','B','C'))
+
+ggsave(plot=last_plot(), paste0("FigPL15", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL15", ".png"), dpi=300, scale=2, units = "cm")
 
 ##############################################################################
 ### Permanova via adonsi2
@@ -724,8 +764,8 @@ patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
 
 patch & coord_flip()
 
-ggsave(plot=last_plot(), paste0("BarplotCompositionReads_HigherTax_MappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("BarplotCompositionReads_HigherTax_MappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL5", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL5", ".png"), dpi=300, scale=2, units = "cm")
 
 
 CompoApis <- CompoPlot("Apis", "RepresentativeName", "CompGroup", topPal)
@@ -742,8 +782,8 @@ patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
 
 patch & coord_flip()
 
-ggsave(plot=last_plot(), paste0("BarplotCompositionReads_LowerTax_MappedVsClassifiedContigs", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("BarplotCompositionReads_LowerTax_MappedVsClassifiedContigs", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL6", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL6", ".png"), dpi=300, scale=2, units = "cm")
 
 
 
@@ -771,10 +811,10 @@ DrawCompHeatmap <- function() {
 )
 }
 
-png(paste0("HeatmapCompositionReadsMappedVsClassifiedContigs", ".png"), width=18, height=12, res=300, unit="cm")
+png(paste0("FigPL7", ".png"), width=18, height=12, res=300, unit="cm")
 DrawCompHeatmap()
 dev.off()
-pdf(paste0("HeatmapCompositionReadsMappedVsClassifiedContigs", ".pdf"), width=8, height=8)
+pdf(paste0("FigPL7", ".pdf"), width=8, height=8)
 DrawCompHeatmap()
 dev.off()
 
@@ -933,31 +973,31 @@ correlhmB_site <- correlhmB_site %>% ComplexHeatmap::draw() %>% grid::grid.grabE
 correlhmA_flowers <- correlhmA_flowers %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
 correlhmB_flowers <- correlhmB_flowers %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
 
-png(paste0("correlhm_genusspecies", ".png"), width=18, height=16, res=300, unit="cm")
+png(paste0("FigPL8", ".png"), width=18, height=16, res=300, unit="cm")
 correlhm_genusspecies
 dev.off()
-pdf(paste0("correlhm_genusspecies", ".pdf"), width=7, height=6)
+pdf(paste0("FigPL8", ".pdf"), width=7, height=6)
 correlhm_genusspecies
 dev.off()
 
-png(paste0("correlhm_time", ".png"), width=36, height=16, res=300, unit="cm")
+png(paste0("FigPL9", ".png"), width=36, height=16, res=300, unit="cm")
 cowplot::plot_grid(correlhmA_time, correlhmB_time, labels=c("A", "B"))
 dev.off()
-pdf(paste0("correlhm_time", ".pdf"), width=14, height=6)
+pdf(paste0("FigPL9", ".pdf"), width=14, height=6)
 cowplot::plot_grid(correlhmA_time, correlhmB_time, labels=c("A", "B"))
 dev.off()
 
-png(paste0("correlhm_site", ".png"), width=36, height=16, res=300, unit="cm")
+png(paste0("FigPL10", ".png"), width=36, height=16, res=300, unit="cm")
 cowplot::plot_grid(correlhmA_site, correlhmB_site, labels=c("A", "B"))
 dev.off()
-pdf(paste0("correlhm_site", ".pdf"), width=14, height=6)
+pdf(paste0("FigPL10", ".pdf"), width=14, height=6)
 cowplot::plot_grid(correlhmA_site, correlhmB_site, labels=c("A", "B"))
 dev.off()
 
-png(paste0("correlhm_flowers", ".png"), width=48, height=16, res=300, unit="cm")
+png(paste0("FigPL11", ".png"), width=48, height=16, res=300, unit="cm")
 cowplot::plot_grid(correlhmA_flowers, correlhmB_flowers, labels=c("A", "B"))
 dev.off()
-pdf(paste0("correlhm_flowers", ".pdf"), width=21, height=6)
+pdf(paste0("FigPL11", ".pdf"), width=21, height=6)
 cowplot::plot_grid(correlhmA_flowers, correlhmB_flowers, labels=c("A", "B"))
 dev.off()
 
@@ -1080,8 +1120,8 @@ scale_x_continuous(limits = c(1000, 15000), breaks = seq(0, 15000, 2500)) +
 labs(size = "% of contig length with > 10 x coverage",
       color = "Host genus")
 
-ggsave(plot=last_plot(), paste0("ScatterCoverageDepthAcrossContigsSelfReadsOnly", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("ScatterCoverageDepthAcrossContigsSelfReadsOnly", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL12", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL12", ".png"), dpi=300, scale=2, units = "cm")
 
 #### contig length only
 CoverageDepths_filt <- CoverageDepths %>% 
@@ -1126,8 +1166,8 @@ CoverageDepths_filt %>% ggplot(aes(genus, Length, fill=genus, color = genus)) +
 geom_beeswarm(size = 0.5) +
 facet_nested_wrap(. ~ SuperBin + RepresentativeName, scales = "free", ncol = 3) 
 
-ggsave(plot=last_plot(), paste0("ContigSizeBeeswarm", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("ContigSizeBeeswarm", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL13", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigPL13", ".png"), dpi=300, scale=2, units = "cm")
 
 ########################################################
 ########################################################
