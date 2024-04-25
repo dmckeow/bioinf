@@ -351,8 +351,8 @@ labs(fill="# CSS norm. reads") +
 xlab("389 Apis samples, 137 Bombus samples")
 
 
-ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigPL1", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigPL1", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".png"), dpi=300, scale=2, units = "cm")
 
 ###############################
 ###############################
@@ -418,8 +418,8 @@ PCoA_physeq <- physeq %>%
 PCoA_physeq %>% 
       ord_plot_iris(tax_level = "RepresentativeName", ord_plot = "above", anno_colour = "genus", n_taxa = 20)
 
-ggsave(plot=last_plot(), paste0("FigPL2", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL2", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR2", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR2", ".png"), dpi=300, scale=2, units = "cm")
 
 ### plot various PCoA plots
 PlotOrdUnconsrained <- function() {
@@ -507,8 +507,8 @@ scale_color_manual(name = "Genus of flower collected from", values = c(
 
 cowplot::plot_grid(Ord_main, Ord_main_yearlab, Ord_main_monthlab, Ord_main_dist, Ord_main_apiary, labels = c('A','B','C','D','E'))
 
-ggsave(plot=last_plot(), paste0("FigPL4", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL4", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR4", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR4", ".png"), dpi=300, scale=2, units = "cm")
 
 
  PCA_main_taxa <- physeq %>%
@@ -527,8 +527,8 @@ ggsave(plot=last_plot(), paste0("FigPL4", ".png"), dpi=300, scale=2, units = "cm
       scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
 
 cowplot::plot_grid(Ord_main, PCA_main_taxa, labels = c('A', 'B'))
-ggsave(plot=last_plot(), paste0("FigPL3", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL3", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR3", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR3", ".png"), dpi=300, scale=2, units = "cm")
 
 #### Redundancy plot to test what variables contributed to communtiy similarity
 
@@ -677,13 +677,13 @@ RDS_flower <- physeq %>%
 
 cowplot::plot_grid(RDS_year, RDS_month, labels = c('A','B'))
 
-ggsave(plot=last_plot(), paste0("FigPL14", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL14", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR14", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR14", ".png"), dpi=300, scale=2, units = "cm")
 
 cowplot::plot_grid(RDS_apiary, RDS_distance, RDS_flower, labels = c('A','B','C'))
 
-ggsave(plot=last_plot(), paste0("FigPL15", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL15", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR15", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR15", ".png"), dpi=300, scale=2, units = "cm")
 
 ##############################################################################
 ### Permanova via adonsi2
@@ -764,8 +764,8 @@ patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
 
 patch & coord_flip()
 
-ggsave(plot=last_plot(), paste0("FigPL5", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL5", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR5", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR5", ".png"), dpi=300, scale=2, units = "cm")
 
 
 CompoApis <- CompoPlot("Apis", "RepresentativeName", "CompGroup", topPal)
@@ -782,8 +782,8 @@ patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
 
 patch & coord_flip()
 
-ggsave(plot=last_plot(), paste0("FigPL6", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL6", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR6", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR6", ".png"), dpi=300, scale=2, units = "cm")
 
 
 
@@ -811,10 +811,10 @@ DrawCompHeatmap <- function() {
 )
 }
 
-png(paste0("FigPL7", ".png"), width=18, height=12, res=300, unit="cm")
+png(paste0("FigR7", ".png"), width=18, height=12, res=300, unit="cm")
 DrawCompHeatmap()
 dev.off()
-pdf(paste0("FigPL7", ".pdf"), width=8, height=8)
+pdf(paste0("FigR7", ".pdf"), width=8, height=8)
 DrawCompHeatmap()
 dev.off()
 
@@ -903,7 +903,14 @@ DrawCorHeatmap <- function(INPUT_PHYSEQ, VARS) {
 )
 }
 
-correlhm_genusspecies <- DrawCorHeatmap(psq_many, c("Apis", "Bombus", "bimaculatus", "citrinus", "griseocollis", "impatiens", "rufocinctus", "vagans"))
+correlhm_genusspecies <- DrawCorHeatmap(psq_many, c("Apis", 
+      "Bombus", 
+      "bimaculatus", 
+      "citrinus", # remove for plant viruses
+      "griseocollis", 
+      "impatiens", 
+      "rufocinctus", 
+      "vagans"))
 
 correlhmA_time <- DrawCorHeatmap(psq_many_Apis, c("y_2021", "y_2022", "y_2023", "Spring", "Summer", "Autumn"))
 correlhmB_time <- DrawCorHeatmap(psq_many_Bombus, c("y_2021", "y_2022", "y_2023", "Summer", "Autumn"))
@@ -960,7 +967,7 @@ correlhmB_flowers <- DrawCorHeatmap(psq_many_Bombus, c(
 "Silphium",
 "Solidago",
 "Sonchus",
-"Symphyotrichum",
+"Symphyotrichum", # not in plant viruses
 "Trifolium"
       ))
 
@@ -973,31 +980,31 @@ correlhmB_site <- correlhmB_site %>% ComplexHeatmap::draw() %>% grid::grid.grabE
 correlhmA_flowers <- correlhmA_flowers %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
 correlhmB_flowers <- correlhmB_flowers %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
 
-png(paste0("FigPL8", ".png"), width=18, height=16, res=300, unit="cm")
+png(paste0("FigR8", ".png"), width=18, height=16, res=300, unit="cm")
 correlhm_genusspecies
 dev.off()
-pdf(paste0("FigPL8", ".pdf"), width=7, height=6)
+pdf(paste0("FigR8", ".pdf"), width=7, height=6)
 correlhm_genusspecies
 dev.off()
 
-png(paste0("FigPL9", ".png"), width=36, height=16, res=300, unit="cm")
+png(paste0("FigR9", ".png"), width=36, height=16, res=300, unit="cm")
 cowplot::plot_grid(correlhmA_time, correlhmB_time, labels=c("A", "B"))
 dev.off()
-pdf(paste0("FigPL9", ".pdf"), width=14, height=6)
+pdf(paste0("FigR9", ".pdf"), width=14, height=6)
 cowplot::plot_grid(correlhmA_time, correlhmB_time, labels=c("A", "B"))
 dev.off()
 
-png(paste0("FigPL10", ".png"), width=36, height=16, res=300, unit="cm")
+png(paste0("FigR10", ".png"), width=36, height=16, res=300, unit="cm")
 cowplot::plot_grid(correlhmA_site, correlhmB_site, labels=c("A", "B"))
 dev.off()
-pdf(paste0("FigPL10", ".pdf"), width=14, height=6)
+pdf(paste0("FigR10", ".pdf"), width=14, height=6)
 cowplot::plot_grid(correlhmA_site, correlhmB_site, labels=c("A", "B"))
 dev.off()
 
-png(paste0("FigPL11", ".png"), width=48, height=16, res=300, unit="cm")
+png(paste0("FigR11", ".png"), width=48, height=16, res=300, unit="cm")
 cowplot::plot_grid(correlhmA_flowers, correlhmB_flowers, labels=c("A", "B"))
 dev.off()
-pdf(paste0("FigPL11", ".pdf"), width=21, height=6)
+pdf(paste0("FigR11", ".pdf"), width=21, height=6)
 cowplot::plot_grid(correlhmA_flowers, correlhmB_flowers, labels=c("A", "B"))
 dev.off()
 
@@ -1120,8 +1127,8 @@ scale_x_continuous(limits = c(1000, 15000), breaks = seq(0, 15000, 2500)) +
 labs(size = "% of contig length with > 10 x coverage",
       color = "Host genus")
 
-ggsave(plot=last_plot(), paste0("FigPL12", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL12", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR12", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR12", ".png"), dpi=300, scale=2, units = "cm")
 
 #### contig length only
 CoverageDepths_filt <- CoverageDepths %>% 
@@ -1130,7 +1137,7 @@ CoverageDepths_filt <- CoverageDepths %>%
       filter(grepl('NO', WasContigRemovedByDerep)) %>% 
       select(-percent_of_contig_len_with_over_nX_coverage, -cov_category, -total_bases_over_5_coverage, -total_bases_over_10_coverage, -total_bases_over_100_coverage) %>%
       distinct() %>%
-      filter(!grepl('Chronic bee|Cripavirus|Aparavirus|partiti-like|permutotetra|rhabdovirus|Agassiz|Mayfield|Loch|hasma-related|interruptus|picorna-like|Lake Sinai virus 3|Lake Sinai virus 6|Lake Sinai virus 1|virus Reo1|Unclassified sinaivirus', RepresentativeName))
+      filter(!grepl('Chronic bee|Cripavirus|Aparavirus|partiti-like|permutotetra|rhabdovirus|Agassiz|Mayfield|Loch|hasma-related|interruptus|picorna-like|Lake Sinai virus 3|Lake Sinai virus 6|Lake Sinai virus 1|virus Reo1|Unclassified sinaivirus|mosaic virus|Peanut|potexvirus|seed borne|betaflexiviridae|Apple|Prunus|mottle virus|Nepovirus|Turnip|Comovirus|comovirus', RepresentativeName))
 
 CoverageDepths_filt$Length <- as.numeric(CoverageDepths_filt$Length)
 
@@ -1163,11 +1170,11 @@ sink()
 #################################
 
 CoverageDepths_filt %>% ggplot(aes(genus, Length, fill=genus, color = genus)) + 
-geom_beeswarm(size = 0.5) +
+geom_beeswarm(size = 2, alpha = 0.8) +
 facet_nested_wrap(. ~ SuperBin + RepresentativeName, scales = "free", ncol = 3) 
 
-ggsave(plot=last_plot(), paste0("FigPL13", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigPL13", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR13", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR13", ".png"), dpi=300, scale=2, units = "cm")
 
 ########################################################
 ########################################################
@@ -1176,111 +1183,7 @@ ggsave(plot=last_plot(), paste0("FigPL13", ".png"), dpi=300, scale=2, units = "c
 ###################################################################################
 
 
-################# CONTIG coverage across length visualisation vs REF genomes
 
-#map <- merge(map_win, map_ref, by.x=c("specific_read_source", "reference"), by.y=c("specific_read_source", "reference"))
-
-### add metadata
-#map$specific_read_source <- gsub("^", "X", map$specific_read_source)
-#map$specific_read_source <- gsub(".bctrimmedreads.fastq.gz.*", "", map$specific_read_source)
-#map <- merge(map, dfmd, by.x="specific_read_source", by.y=0, all.x=TRUE)
-
-#### calc RPKM
-#map <- map %>% mutate(RPKM=paste0(avg_coverage_by_window/((ref_length/1e3)*(NumReadsInSpecificReadSource/1e6))))
-#map$RPKM <- as.numeric(map$RPKM)
-#map$avg_coverage_by_window <- as.numeric(map$avg_coverage_by_window)
-#map <- map %>% mutate(RPKM=(round(RPKM, 1)))
-#map <- map %>% mutate(avg_coverage_by_window=(round(avg_coverage_by_window, 1)))
-
-#map <- map %>% mutate(avg_coverage_by_window = log10(avg_coverage_by_window + 1))
-#map <- map %>% mutate(RPKM_log = log10(RPKM + 1))
-
-
-
-#####################################################
-
-#### average by genus, species, collection_month, collection_year, apiary, distance
-
-#map <- transform(map, avg_coverage_by_window_AVG = ave(avg_coverage_by_window, ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, FUN = ave))
-
-#map <- transform(map, RPKM_AVG = ave(RPKM, ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, FUN = ave))
-
-#map <- map %>% group_by(ref_start, reference, genus, species, collection_month, collection_year, apiary, distance) %>% mutate(AVG_grouping = paste(specific_read_source, collapse = ";")) %>% ungroup()
-#map <- data.frame(map)
-
-#map <- map %>% mutate(RPKM_AVG=(round(RPKM_AVG, 1)))
-#map <- map %>% mutate(avg_coverage_by_window_AVG=(round(avg_coverage_by_window_AVG, 1)))
-
-#map <- map %>% mutate(avg_coverage_by_window_AVG_log = log10(avg_coverage_by_window_AVG + 1))
-#map <- map %>% mutate(RPKM_AVG_log = log10(RPKM_AVG + 1))
-
-#map <- map %>% mutate(RPKM_AVG_log=(round(RPKM_AVG_log, 1)))
-#map <- map %>% mutate(avg_coverage_by_window_AVG_log=(round(avg_coverage_by_window_AVG_log, 1)))
-
-#map$seqrun <- gsub("__barcode.*", "", map$specific_read_source)
-
-
-################################################
-#### simple heatmap for mapping vs reference (no interest in windows, just sum total per reference genome)
-#map_ref <- map_ref %>% select(specific_read_source, NumReadsInSpecificReadSource) %>% unique()
-
-#map_ref_tot <- merge(map_ref_tot, map_ref, by.x="specific_read_source", by.y="specific_read_source")
-
-
-#map_ref_tot$mapping_reference <- gsub(".*.bctrimmedreads.fastq.gz.", "", map_ref_tot$specific_read_source)
-#map_ref_tot$specific_read_source <- gsub(".bctrimmedreads.fastq.gz.*", "", map_ref_tot$specific_read_source)
-
-#map_ref_tot_md <- merge(map_ref_tot, dfmd, by.x="specific_read_source", by.y="specific_read_source", all.x=TRUE)
-
-#map_ref_tot_md <- map_ref_tot_md %>% mutate(reads_mapped_relative_librarysize=paste0(total_mapped_reads/NumReadsInSpecificReadSource))
-
-#map_ref_tot_md$reads_mapped_relative_librarysize <- as.numeric(map_ref_tot_md$reads_mapped_relative_librarysize)
-
-#map_ref_tot_md %>%
-#ggplot(aes(x=specific_read_source, y=mapping_reference, fill=reads_mapped_relative_librarysize)) + 
- # geom_tile() +
-  #scale_fill_viridis(option="inferno", limits = c(0, 1), oob = scales::oob_squish) +
-  #facet_nested(. ~  genus, switch = "both", space = "free", scales = "free") +
-  #theme(axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
-  #theme(strip.text.y.left = element_text(angle = 0, hjust = 1)) +
-#theme(strip.background.y = element_blank()) +
-#theme(panel.border = element_blank()) +
-#theme(axis.title = element_blank()) +
-#theme(panel.spacing.x=unit(0.2, "lines")) +
-#theme(panel.spacing.y=unit(0.1, "lines")) +
-#theme(strip.placement = "outside") +
-#theme(ggh4x.facet.nestline = element_line(colour = "black"))
-
-
-#####################################################
-#####################################################
-
-########## as categoryised coverage thresholds
-#map %>%
-#filter(grepl('NC_002066.1___Sacbrood_virus', reference)) %>%
-#distinct(ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, .keep_all = TRUE) %>% 
-#ggplot() +
-#geom_line(aes(x=ref_start, y=RPKM_AVG_log, group=AVG_grouping, color=genus))
-#geom_area(aes(x=ref_start, y=RPKM_log, group=genus, fill=genus), position = 'stack')
-
-
-###for jsut as a heatmap
-#map %>% 
-#filter(grepl('Sacbrood|Deformed|Varroa|Black|LSV_1', reference)) %>%
-#distinct(ref_start, reference, genus, species, collection_month, collection_year, apiary, distance, .keep_all = TRUE) %>% 
-#ggplot(aes(x=ref_start, y=specific_read_source, fill=RPKM_log)) + 
- # geom_tile() +
-  #scale_fill_viridis(option="inferno") +
-  #facet_nested(genus ~ reference, switch = "both", space = "free", scales = "free") +
-  #theme(axis.text.y=element_blank()) +
-  #theme(strip.text.y.left = element_text(angle = 0, hjust = 1)) +
-#theme(strip.background.y = element_blank()) +
-#theme(panel.border = element_blank()) +
-#theme(axis.title = element_blank()) +
-#theme(panel.spacing.x=unit(0.2, "lines")) +
-#theme(panel.spacing.y=unit(0.1, "lines")) +
-#theme(strip.placement = "outside") +
-#theme(ggh4x.facet.nestline = element_line(colour = "black"))
 
 
 

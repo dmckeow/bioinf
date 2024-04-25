@@ -12,6 +12,9 @@ library(TDbook)
 library(Biostrings)
 library(treeio)
 library(patchwork)
+library(phangorn)
+
+
 
 
 #### there is somethnig wrong with ggtree - this code fixes it:
@@ -110,14 +113,16 @@ ref.sam.metadata$Project <<- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref
 DrawTree1 <- function(input_tree) {
     p <<- input_tree %>% 
     ggtree(linewidth=0.9,
-           layout="daylight",
-           branch.length="none",
-           aes(color=genus, linetype=Project),
+           layout="rectangular",
+           branch.length="branch.length",
+           aes(linetype=Project),
+           color='grey60',
            na.rm=TRUE
     ) %<+% ref.sam.metadata +
-    #geom_point(aes(color=genus, shape=Project), alpha=1.0, na.rm=TRUE, size = 2) +
-    scale_color_manual(values = c(Apis = 'red', Bombus = 'blue', Other = 'grey'), na.value = "grey") +
-     scale_linetype_manual(values = c(`Current study`= "solid", NCBI = "dotted", Other = "solid"), na.value = "solid")
+    scale_color_manual(values = c(Apis = '#e31a1c', Bombus = '#1f78b4', Other = 'black'), na.value = "black") +
+    scale_linetype_manual(values = c(`Current study`= "solid", NCBI = "dotted", Other = "solid"), na.value = "solid") +
+     geom_tippoint(aes(color = genus), size = 1) +
+     geom_treescale()
 
     plot(p + geom_text(aes(label=node), hjust=-.3) +
         geom_tiplab(aes(label=tip.name), size = 3, color = "black", offset=0.01))
@@ -132,7 +137,16 @@ CollapseTree <- function(node_to_collapse) {
 
 LabelTreeClade <- function(NODE, LABEL) {
     p <<- p + geom_cladelab(node=NODE, label=LABEL, align=TRUE, 
-                  geom='label', fill='grey', hjust = 1)
+                  geom='label', fill='white', hjust = 1)
+    plot(p)
+}
+
+TreeHeatmap <- function(){
+    ref.sam.metadata.HM <<- ref.sam.metadata %>%
+        select(genus)
+    rownames(ref.sam.metadata.HM) <<- phytree$tip.label
+    p <<- gheatmap(p, ref.sam.metadata.HM, offset=0, width=.9,
+               colnames = FALSE, legend_title = NULL)
     plot(p)
 }
 
@@ -159,6 +173,8 @@ tree_ext <- ".contree"
 virus_name <- "Apis_rhabdovirus"
 output_name <- "Apis_rhabdovirus"
 PrepMetaDataTreeDNA()
+
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 
 assign(output_name, p)
@@ -168,6 +184,8 @@ assign(output_name, p)
 virus_name <- "Dicistroviridae"
 output_name <- "Dicistroviridae"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
+
 DrawTree1(phytree)
 
 assign(output_name, p)
@@ -176,6 +194,8 @@ assign(output_name, p)
 virus_name <- "Dicistroviridae_Aparavirus"
 output_name <- "Dicistroviridae_Aparavirus"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
+
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -183,6 +203,7 @@ assign(output_name, p)
 virus_name <- "Dicistroviridae_Cripavirus"
 output_name <- "Dicistroviridae_Cripavirus"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -190,6 +211,7 @@ assign(output_name, p)
 virus_name <- "Dicistroviridae_Triatovirus"
 output_name <- "Dicistroviridae_Triatovirus"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -198,6 +220,7 @@ assign(output_name, p)
 virus_name <- "Iflaviridae_Iflavirus_aladeformis"
 output_name <- "Iflaviridae_Iflavirus_aladeformis"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -205,6 +228,7 @@ assign(output_name, p)
 virus_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1"
 output_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -212,6 +236,7 @@ assign(output_name, p)
 virus_name <- "Iflaviridae_Iflavirus_sacbroodi"
 output_name <- "Iflaviridae_Iflavirus_sacbroodi"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -219,6 +244,7 @@ assign(output_name, p)
 virus_name <- "Negevirus_Negevirus_like"
 output_name <- "Negevirus_Negevirus_like"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -226,6 +252,7 @@ assign(output_name, p)
 virus_name <- "Partiti_like"
 output_name <- "Partiti_like"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -233,6 +260,7 @@ assign(output_name, p)
 virus_name <- "Phasmaviridae"
 output_name <- "Phasmaviridae"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -240,6 +268,7 @@ assign(output_name, p)
 virus_name <- "Picorna_like_Mayfield"
 output_name <- "Picorna_like_Mayfield"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -247,6 +276,7 @@ assign(output_name, p)
 virus_name <- "Reo_like"
 output_name <- "Reo_like"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -254,6 +284,7 @@ assign(output_name, p)
 virus_name <- "Sinaivirus"
 output_name <- "Sinaivirus"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
@@ -261,29 +292,44 @@ assign(output_name, p)
 virus_name <- "Virga_like"
 output_name <- "Virga_like"
 PrepMetaDataTreeDNA()
+phytree <- phangorn::midpoint(phytree)
 DrawTree1(phytree)
 assign(output_name, p)
 
 
-Apis_rhabdovirus + ggtitle('Apis rhabdovirus') + 
-Dicistroviridae_Triatovirus + ggtitle('Dicistroviridae\nTriatovirus') + 
-Dicistroviridae_Aparavirus + ggtitle('Dicistroviridae\nAparavirus') + 
-Dicistroviridae_Cripavirus + ggtitle('Dicistroviridae\nCripavirus') +
-Iflaviridae_Iflavirus_aladeformis + ggtitle('Iflaviridae\nIflavirus aladeformis') + 
-Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1 + ggtitle('Iflaviridae\nBactrocera tryoni iflavirus 1') + 
-Iflaviridae_Iflavirus_sacbroodi + ggtitle('Iflaviridae\nIflavirus sacbroodi') +
-Negevirus_Negevirus_like + ggtitle('Negevirus-like') +
-Partiti_like + ggtitle('Partiti-like') +
-Phasmaviridae + ggtitle('Phasmaviridae') +
-Picorna_like_Mayfield + ggtitle('Picorna-like Mayfield') +
-Reo_like + ggtitle('Reo-like') +
+(Apis_rhabdovirus + ggtitle('Apis rhabdovirus') + 
+Dicistroviridae_Triatovirus + ggtitle('Dicistroviridae Triatovirus')) /
+(Dicistroviridae_Aparavirus + ggtitle('Dicistroviridae Aparavirus') + 
+Dicistroviridae_Cripavirus + ggtitle('Dicistroviridae Cripavirus')) +
+plot_layout(guides = 'collect')
+
+ggsave(plot = last_plot(), "FigPhyN1.pdf", dpi=300, scale=1, units = "cm")
+ggsave(plot = last_plot(), "FigPhyN1.png", dpi=300, scale=1, units = "cm")
+
+(Iflaviridae_Iflavirus_aladeformis + ggtitle('Iflaviridae Iflavirus aladeformis') + 
+Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1 + ggtitle('Iflaviridae Bactrocera tryoni iflavirus 1')) /
+(Iflaviridae_Iflavirus_sacbroodi + ggtitle('Iflaviridae Iflavirus sacbroodi') +
+Negevirus_Negevirus_like + ggtitle('Negevirus-like')) +
+plot_layout(guides = 'collect')
+
+ggsave(plot = last_plot(), "FigPhyN2.pdf", dpi=300, scale=1, units = "cm")
+ggsave(plot = last_plot(), "FigPhyN2.png", dpi=300, scale=1, units = "cm")
+
+(Partiti_like + ggtitle('Partiti-like') +
+Phasmaviridae + ggtitle('Phasmaviridae')) /
+(Picorna_like_Mayfield + ggtitle('Picorna-like Mayfield') +
+Reo_like + ggtitle('Reo-like')) +
+plot_layout(guides = 'collect')
+
+ggsave(plot = last_plot(), "FigPhyN3.pdf", dpi=300, scale=1, units = "cm")
+ggsave(plot = last_plot(), "FigPhyN3.png", dpi=300, scale=1, units = "cm")
+
 Sinaivirus + ggtitle('Sinaivirus') +
 Virga_like + ggtitle('Virga-like') +
-plot_layout(guides = 'collect', widths= c(1,1,1,1,0.5))
+plot_layout(guides = 'collect')
 
-ggsave(plot = last_plot(), "All_fastANI_trees.pdf", dpi=300, scale=2, units = "cm")
-ggsave(plot = last_plot(), "All_fastANI_trees.png", dpi=300, scale=2, units = "cm")
-
+ggsave(plot = last_plot(), "FigPhyN4.pdf", dpi=300, scale=1, units = "cm")
+ggsave(plot = last_plot(), "FigPhyN4.png", dpi=300, scale=1, units = "cm")
 
 ########################################################
 ########################################################
@@ -293,11 +339,15 @@ DrawTree2 <- function(input_tree, LAYOUT, BRANCH) {
     ggtree(linewidth=0.9,
            layout=LAYOUT,
            branch.length=BRANCH,
-           aes(color=genus, linetype=Project),
+           aes(linetype=Project),
+           color='grey30',
            na.rm=TRUE
     ) %<+% ref.sam.metadata +
-    scale_color_manual(values = c(Apis = 'red', Bombus = 'blue', Other = 'grey'), na.value = "grey") +
-     scale_linetype_manual(values = c(`Current study`= "solid", NCBI = "dotted", Other = "solid"), na.value = "solid")
+    scale_color_manual(values = c(Apis = 'red', Bombus = 'blue', Other = 'grey'), na.value = "black") +
+     scale_linetype_manual(values = c(`Current study`= "solid", NCBI = "dotted", Other = "solid"), na.value = "solid") +
+     geom_tippoint(aes(color = genus)) +
+    geom_treescale()
+
 
     plot(p + geom_text(aes(label=node), hjust=-.3) +
         geom_tiplab(aes(label=RepresentativeName), size = 3, color = "black", offset=0.01))
@@ -571,3 +621,14 @@ DrawTree2(phytree, "circular", "none")
 
 ggsave(plot = last_plot(), "All_PfamAA_trees.pdf", dpi=300, scale=2, units = "cm")
 ggsave(plot = last_plot(), "All_PfamAA_trees.png", dpi=300, scale=2, units = "cm")
+
+
+
+
+
+
+
+
+
+
+
