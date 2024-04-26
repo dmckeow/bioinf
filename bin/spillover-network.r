@@ -14,7 +14,7 @@ library(ggraph)
 
 # Import data
 ref.metadata <- read_sheet("https://docs.google.com/spreadsheets/d/14BDmFgMYqHksvIRgdRG_jLISXi7MqqAoBVyAn96cm8g/edit#gid=1598046758")
-sam.metadata <- read_sheet("https://docs.google.com/spreadsheets/d/1kzg8noVgySe9xLxQBW2BXR1ospcgSqcZAIQNwI8Ygn4/edit#gid=1459467912")
+sam.metadata <- read_sheet("https://docs.google.com/spreadsheets/d/1NhxQtQRc7nGmX0t0FwOZJAziMn3r0FshtpehCa-Lo5U/edit#gid=476945537")
 
 # reduce to relevant metadata columns only
 FilterMD <- function(x) {
