@@ -550,7 +550,56 @@ RDS_year <- physeq %>%
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
       stat_ellipse(aes(colour = collection_year), linewidth = 0.75) +
-scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "2021" = Paired_pal[3], "2022" = Paired_pal[4], "2023" = Paired_pal[5]))      
+scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "2021" = Paired_pal[3], "2022" = Paired_pal[4], "2023" = Paired_pal[5]))
+
+UnconstrainedTaxaPCAFiltered <- function(FILTER_VAR, VAR) {
+      physeq %>%
+      ps_filter({{ FILTER_VAR }} == VAR) %>%
+      tax_transform("clr", rank = "RepresentativeName") %>%
+      ord_calc(method="PCA"
+            ) %>%
+      ord_plot(
+            plot_taxa = 1:10,
+            color = "genus",
+            size = 3, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 0, size = 3),
+            tax_vec_style_all  = vec_tax_all(colour = "grey30")) +
+      theme(aspect.ratio = 1) +
+      scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+}
+
+Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(collection_year, "2021")
+Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(collection_year, "2022")
+Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(collection_year, "2023")
+Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(collection_month, "May")
+Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(collection_month, "June")
+Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(collection_month, "July")
+Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(collection_month, "August")
+Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(collection_month, "September")
+Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(collection_month, "October")
+Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(collection_month, "November")
+
+cowplot::plot_grid(Unconstrained_PCA_2021,
+                  Unconstrained_PCA_2022,
+                  Unconstrained_PCA_2023,
+                  labels = c('A','B', 'C'))
+
+ggsave(plot=last_plot(), paste0("FigR16", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR16", ".png"), dpi=300, scale=2, units = "cm")
+
+
+cowplot::plot_grid(
+                  Unconstrained_PCA_May,
+                  Unconstrained_PCA_June,
+                  Unconstrained_PCA_July,
+                  Unconstrained_PCA_August,
+                  Unconstrained_PCA_September,
+                  Unconstrained_PCA_October,
+                  Unconstrained_PCA_November,
+                  labels = c('A','B', 'C','D','E', 'F', 'G'))
+
+ggsave(plot=last_plot(), paste0("FigR17", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR17", ".png"), dpi=300, scale=2, units = "cm")
 
 #####
 month_shapes <- c("May" = 0, "June" = 1, "July" = 2, "August" = 3, "September" = 4, "October" = 5, "November" = 6)
@@ -824,6 +873,8 @@ dev.off()
 ReShapeCorrel <- function() {
       physeq %>%
   ps_mutate(
+      collection_year = paste0(genus, collection_year),
+
       Apis = if_else(genus == "Apis", true = 1, false = 0),
       Bombus = if_else(genus == "Bombus", true = 1, false = 0),
       bimaculatus = if_else(species == "bimaculatus", true = 1, false = 0),
@@ -836,12 +887,20 @@ ReShapeCorrel <- function() {
     d_100 = if_else(distance == "100", true = 1, false = 0),
     d_500 = if_else(distance == "500", true = 1, false = 0),
     d_1500 = if_else(distance == "1500", true = 1, false = 0),
-    y_2021 = if_else(collection_year == "2021", true = 1, false = 0),
-    y_2022 = if_else(collection_year == "2022", true = 1, false = 0),
-    y_2023 = if_else(collection_year == "2023", true = 1, false = 0),
-      Spring = ifelse(grepl("May", collection_month), 1, 0),
-      Summer = ifelse(grepl("June|July|August", collection_month), 1, 0),
-      Autumn = ifelse(grepl("September|October|November", collection_month), 1, 0),
+    Apis2021 = if_else(collection_year == "Apis2021", true = 1, false = 0),
+    Apis2022 = if_else(collection_year == "Apis2022", true = 1, false = 0),
+    Apis2023 = if_else(collection_year == "Apis2023", true = 1, false = 0),
+    Bombus2021 = if_else(collection_year == "Bombus2021", true = 1, false = 0),
+    Bombus2022 = if_else(collection_year == "Bombus2022", true = 1, false = 0),
+    Bombus2023 = if_else(collection_year == "Bombus2023", true = 1, false = 0),
+
+      May = ifelse(grepl("May", collection_month), 1, 0),
+      June = ifelse(grepl("June", collection_month), 1, 0),
+      July = ifelse(grepl("July", collection_month), 1, 0),
+      August = ifelse(grepl("August", collection_month), 1, 0),
+      September = ifelse(grepl("September", collection_month), 1, 0),
+      October = ifelse(grepl("October", collection_month), 1, 0),
+      November = ifelse(grepl("November", collection_month), 1, 0),
       Crosby = if_else(apiary == "Crosby", true = 1, false = 0),
       Golf = if_else(apiary == "Golf", true = 1, false = 0),
       Vet = if_else(apiary == "Vet", true = 1, false = 0),
@@ -880,11 +939,11 @@ Verbena= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Verbena"))
 
 psq_many <- ReShapeCorrel()
 
-psq_many_Apis <- ReShapeCorrel() %>% 
-      ps_filter(genus == "Apis")
+#psq_many_Apis <- ReShapeCorrel() %>% 
+ #     ps_filter(genus == "Apis")
 
-psq_many_Bombus <- ReShapeCorrel() %>%
-      ps_filter(genus == "Bombus")
+#psq_many_Bombus <- ReShapeCorrel() %>%
+#      ps_filter(genus == "Bombus")
 
 
 
@@ -912,8 +971,8 @@ correlhm_genusspecies <- DrawCorHeatmap(psq_many, c("Apis",
       "rufocinctus", 
       "vagans"))
 
-correlhmA_time <- DrawCorHeatmap(psq_many_Apis, c("y_2021", "y_2022", "y_2023", "Spring", "Summer", "Autumn"))
-correlhmB_time <- DrawCorHeatmap(psq_many_Bombus, c("y_2021", "y_2022", "y_2023", "Summer", "Autumn"))
+correlhm_year <- DrawCorHeatmap(psq_many, c("Apis2021", "Apis2022", "Apis2023", "Bombus2021", "Bombus2022", "Bombus2023"))
+correlhm_month <- DrawCorHeatmap(psq_many, c("May", "June", "July", "August", "September", "October", "November"))
 
 correlhmA_site <- DrawCorHeatmap(psq_many_Apis, c("Crosby", "Golf", "Vet", "Colony", "d_100", "d_500", "d_1500"))
 correlhmB_site <- DrawCorHeatmap(psq_many_Bombus, c("Crosby", "Golf", "Vet", "Colony", "d_100", "d_500", "d_1500"))
