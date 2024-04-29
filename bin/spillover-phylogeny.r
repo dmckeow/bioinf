@@ -37,8 +37,6 @@ FilterMD <- function(x) {
 
 ref.metadata <- FilterMD(ref.metadata)
 sam.metadata <- FilterMD(sam.metadata)
-ref.metadata$tip.name <- paste(ref.metadata$RepresentativeName,ref.metadata$contig)
-sam.metadata$tip.name <- NA
 
 #####################################################################################################
 #####################################################################################################
@@ -71,9 +69,6 @@ ref.sam.metadata$Project <<- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref
 
 # Read in tree
     phytree <<- read.tree(paste0(virus_name, tree_ext))
-
-# Root tree
-    #tree <- root(tree, "AF092924.1_Sacbrood_virus", resolve.root=TRUE, edgelabel=TRUE)
 }
 
 
@@ -103,55 +98,37 @@ ref.sam.metadata$Project <<- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref
         left_join(ref.sam.metadata, by='contig')
     ref.sam.metadata$prot <<- gsub(":", "_", ref.sam.metadata$prot)
 
+ref.sam.metadata$tip.name.prot <<- ref.sam.metadata$prot
+
 # Read in tree
     phytree <<- read.tree(paste0(virus_name, tree_ext))
 
-# Root tree
-    #tree <- root(tree, "AF092924.1_Sacbrood_virus", resolve.root=TRUE, edgelabel=TRUE)
 }
 
 
 DrawTree <- function(input_tree, LAYOUT, BRANCH) {
     p <- input_tree %>% 
-    ggtree(linewidth=1.25,
+    ggtree(linewidth=0.9,
            layout=LAYOUT,
            branch.length=BRANCH,
-           na.rm=TRUE
+           na.rm=TRUE,
+           open.angle = 180
     ) %<+% ref.sam.metadata +
     scale_color_manual(values = c(Apis = '#e31a1c', Bombus = '#1f78b4', Other = 'black')) +
      geom_tippoint(aes(color = genus, shape = Project), size = 3) +
      geom_treescale() +
-     scale_shape_manual(values = c(`Current study`= 16, NCBI = 10, Other = 10), na.value = 16)
+     scale_shape_manual(values = c(`Current study`= 16, NCBI = 10, Other = 10), na.value = 16) +
+     geom_text2(aes(label=label,  # add the bootstrap values
+            subset = !is.na(as.numeric(label)) & as.numeric(label) > 70),
+            nudge_x = -0.01, nudge_y = 0.01, 
+            check_overlap = TRUE, size = 3, color = "black")
      
      return(p)
 
     #plot(p + geom_text(aes(label=node), hjust=-.3) +
-    #   geom_tiplab(aes(label=tip.name), size = 3, color = "black", offset=0.01))
+    #   geom_tiplab(aes(label=tip.name.contig), size = 3, color = "black", offset=0.01))
     #plot(p)
 }
-
-DrawTree2 <- function(input_tree, LAYOUT, BRANCH) {
-    p <- input_tree %>% 
-    ggtree(linewidth=1.25,
-           layout=LAYOUT,
-           branch.length=BRANCH,
-           aes(color = branch.length),
-           na.rm=TRUE
-    ) %<+% ref.sam.metadata +
-    scale_color_continuous(low='grey70', high='black') +
-    new_scale_color() +
-    scale_color_manual(values = c(Apis = '#e31a1c', Bombus = '#1f78b4', Other = 'black')) +
-     geom_tippoint(aes(color = genus, shape = Project), size = 3) +
-     geom_treescale() +
-     scale_shape_manual(values = c(`Current study`= 16, NCBI = 10, Other = 10), na.value = 16)
-     
-     return(p)
-
-    #plot(p + geom_text(aes(label=node), hjust=-.3) +
-    #   geom_tiplab(aes(label=tip.name), size = 3, color = "black", offset=0.01))
-    #plot(p)
-}
-
 
 CollapseTree <- function(node_to_collapse) {
     p <<- p %>% ggtree::collapse(node=node_to_collapse)
@@ -167,7 +144,7 @@ LabelTreeClade <- function(NODE, LABEL) {
 }
 
 
-TreeHeatmap <- function(VARS_TO_SELECT, ROW_NAMES_COLUMN, WIDTH){
+TreeHeatmap <- function(INPUT, VARS_TO_SELECT, ROW_NAMES_COLUMN, WIDTH, OFFSET){
     # Reorder the dataframe based on the specified column for row names
     ref.sam.metadata.HM <- ref.sam.metadata[match(phytree$tip.label, ref.sam.metadata[, ROW_NAMES_COLUMN]), ]
 
@@ -179,7 +156,7 @@ TreeHeatmap <- function(VARS_TO_SELECT, ROW_NAMES_COLUMN, WIDTH){
     rownames(ref.sam.metadata.HM) <- phytree$tip.label
     
     # Generate the heatmap
-    p <- gheatmap(p, ref.sam.metadata.HM, width = WIDTH, colnames = FALSE)
+    p <- gheatmap(INPUT, ref.sam.metadata.HM, width = WIDTH, colnames = FALSE, offset = OFFSET)
     
     # Plot the heatmap
     plot(p)
@@ -189,20 +166,6 @@ TreeHeatmap <- function(VARS_TO_SELECT, ROW_NAMES_COLUMN, WIDTH){
     ))
 }
 
-
-############### TEMPLATE
-#### main tree
-#tree_ext <- ".contree"
-#virus_name <- "test"
-
-#output_name <- "test"
-#PrepMetaDataTreeDNA()
-#p <- DrawTree(phytree, "circular", "branch.length")
-
-##### subtree
-#sub_tree <- tree_subset(tree, node=813, levels_back=0)
-#output_name <- "test"
-#DrawTree(sub_tree)
 
 ###################################################
 
@@ -214,7 +177,11 @@ output_name <- "Apis_rhabdovirus"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Dicistroviridae
 #### main tree
@@ -224,17 +191,24 @@ PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 
 p <- DrawTree(phytree, "rectangular", "branch.length")
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
 
-assign(output_name, p)
+assign(output_name, output$p)
 
 #### Dicistroviridae_Aparavirus
 virus_name <- "Dicistroviridae_Aparavirus"
 output_name <- "Dicistroviridae_Aparavirus"
 PrepMetaDataTreeDNA()
+to_drop <- c("_R_29JAN24DM1___barcode66.contigs.fasta______tig00000096")
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 #### Dicistroviridae_Cripavirus
 virus_name <- "Dicistroviridae_Cripavirus"
@@ -242,7 +216,10 @@ output_name <- "Dicistroviridae_Cripavirus"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 #### Dicistroviridae_Triatovirus
 virus_name <- "Dicistroviridae_Triatovirus"
@@ -250,7 +227,10 @@ output_name <- "Dicistroviridae_Triatovirus"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 
 ##### Iflaviridae_Iflavirus_aladeformis
@@ -259,7 +239,10 @@ output_name <- "Iflaviridae_Iflavirus_aladeformis"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1
 virus_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1"
@@ -267,15 +250,23 @@ output_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Iflaviridae_Iflavirus_sacbroodi
 virus_name <- "Iflaviridae_Iflavirus_sacbroodi"
 output_name <- "Iflaviridae_Iflavirus_sacbroodi"
 PrepMetaDataTreeDNA()
+to_drop <- c("26JAN24DM1___barcode54.contigs.fasta______tig00000104")
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Negevirus like
 virus_name <- "Negevirus_Negevirus_like"
@@ -283,7 +274,10 @@ output_name <- "Negevirus_Negevirus_like"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Partiti like
 virus_name <- "Partiti_like"
@@ -291,7 +285,10 @@ output_name <- "Partiti_like"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Phasmaviridae
 virus_name <- "Phasmaviridae"
@@ -299,7 +296,10 @@ output_name <- "Phasmaviridae"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Picorna like Mayfield
 virus_name <- "Picorna_like_Mayfield"
@@ -307,7 +307,10 @@ output_name <- "Picorna_like_Mayfield"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Reo like
 virus_name <- "Reo_like"
@@ -315,7 +318,10 @@ output_name <- "Reo_like"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Sinaivirus
 virus_name <- "Sinaivirus"
@@ -323,7 +329,10 @@ output_name <- "Sinaivirus"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+
+assign(output_name, output$p)
 
 ##### Virga like
 virus_name <- "Virga_like"
@@ -331,42 +340,30 @@ output_name <- "Virga_like"
 PrepMetaDataTreeDNA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
-assign(output_name, p)
+output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
 
+assign(output_name, output$p)
 
-(Apis_rhabdovirus + ggtitle('Apis rhabdovirus') + 
-Dicistroviridae_Triatovirus + ggtitle('Dicistroviridae Triatovirus')) /
-(Dicistroviridae_Aparavirus + ggtitle('Dicistroviridae Aparavirus') + 
-Dicistroviridae_Cripavirus + ggtitle('Dicistroviridae Cripavirus')) +
-plot_layout(guides = 'collect')
+pdf("FigPhyNT_whole_multi.pdf", width = 9, height = 9)
 
-ggsave(plot = last_plot(), "FigPhyN1.pdf", dpi=300, scale=1, units = "cm")
-ggsave(plot = last_plot(), "FigPhyN1.png", dpi=300, scale=1, units = "cm")
+Apis_rhabdovirus + ggtitle('A\nApis rhabdovirus')
+Dicistroviridae_Triatovirus + ggtitle('B\nDicistroviridae Triatovirus')
+Dicistroviridae_Aparavirus + ggtitle('C\nDicistroviridae Aparavirus')
+Dicistroviridae_Cripavirus + ggtitle('D\nDicistroviridae Cripavirus')
+Iflaviridae_Iflavirus_aladeformis + ggtitle('E\nIflaviridae Iflavirus aladeformis')
+Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1 + ggtitle('F\nIflaviridae Bactrocera tryoni iflavirus 1')
+Iflaviridae_Iflavirus_sacbroodi + ggtitle('G\nIflaviridae Iflavirus sacbroodi')
+Negevirus_Negevirus_like + ggtitle('H\nNegevirus-like')
+Partiti_like + ggtitle('I\nPartiti-like')
+Phasmaviridae + ggtitle('J\nPhasmaviridae')
+Picorna_like_Mayfield + ggtitle('K\nPicorna-like Mayfield')
+Reo_like + ggtitle('L\nReo-like')
+Sinaivirus + ggtitle('M\nSinaivirus')
+Virga_like + ggtitle('N\nVirga-like')
 
-(Iflaviridae_Iflavirus_aladeformis + ggtitle('Iflaviridae Iflavirus aladeformis') + 
-Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1 + ggtitle('Iflaviridae Bactrocera tryoni iflavirus 1')) /
-(Iflaviridae_Iflavirus_sacbroodi + ggtitle('Iflaviridae Iflavirus sacbroodi') +
-Negevirus_Negevirus_like + ggtitle('Negevirus-like')) +
-plot_layout(guides = 'collect')
+dev.off()
 
-ggsave(plot = last_plot(), "FigPhyN2.pdf", dpi=300, scale=1, units = "cm")
-ggsave(plot = last_plot(), "FigPhyN2.png", dpi=300, scale=1, units = "cm")
-
-(Partiti_like + ggtitle('Partiti-like') +
-Phasmaviridae + ggtitle('Phasmaviridae')) /
-(Picorna_like_Mayfield + ggtitle('Picorna-like Mayfield') +
-Reo_like + ggtitle('Reo-like')) +
-plot_layout(guides = 'collect')
-
-ggsave(plot = last_plot(), "FigPhyN3.pdf", dpi=300, scale=1, units = "cm")
-ggsave(plot = last_plot(), "FigPhyN3.png", dpi=300, scale=1, units = "cm")
-
-Sinaivirus + ggtitle('Sinaivirus') +
-Virga_like + ggtitle('Virga-like') +
-plot_layout(guides = 'collect')
-
-ggsave(plot = last_plot(), "FigPhyN4.pdf", dpi=300, scale=1, units = "cm")
-ggsave(plot = last_plot(), "FigPhyN4.png", dpi=300, scale=1, units = "cm")
 
 ########################################################
 ########################################################
@@ -448,7 +445,7 @@ PrepMetaDataTreeAA()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
 
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.05)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.05, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -461,7 +458,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.05)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.05, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -473,7 +470,7 @@ PrepMetaDataTreeAA()
 phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.05)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.05, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -485,7 +482,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 p <- DrawTree(phytree, "circular", "branch.length")
 phytree <- phangorn::midpoint(phytree)
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.05)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.05, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -499,20 +496,20 @@ phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
 
-pdf("FigPhyAA_Pfam_multi.pdf", width = 9, height = 9)
+#pdf("FigPhyAA_Pfam_multi.pdf", width = 9, height = 9)
 
-Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196 + ggtitle('A   Bunyavirus RdRp PF04196')
-Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946 + ggtitle('B   Mononegavirales RdRp PF00946')
-Pfam__RNA_dependent_RNA_polymerase__PF00680 + ggtitle('C   RdRp PF00680')
-Pfam__RNA_dependent_RNA_polymerase__PF00978 + ggtitle('D   RdRp PF00978')
-Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998 + ggtitle('E   RdRp PF00998')
+#Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196 + ggtitle('A\nBunyavirus RdRp PF04196')
+#Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946 + ggtitle('B\nMononegavirales RdRp PF00946')
+#Pfam__RNA_dependent_RNA_polymerase__PF00680 + ggtitle('C\nRdRp PF00680')
+#Pfam__RNA_dependent_RNA_polymerase__PF00978 + ggtitle('D\nRdRp PF00978')
+#Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998 + ggtitle('E\nRdRp PF00998')
 
-dev.off()
+#dev.off()
 
 ##########################################################
 
@@ -522,7 +519,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -531,9 +528,11 @@ virus_name <- "Dicistroviridae_Aparavirus__Pfam__RNA_dependent_RNA_polymerase__P
 output_name <- "Dicistroviridae_Aparavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
+to_drop <- c("29JAN24DM1___barcode66.contigs.fasta______tig00000096_3_16-491", "29JAN24DM1___barcode66.contigs.fasta______tig00000096_1_14-127")
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -544,7 +543,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -556,7 +555,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -568,7 +567,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -578,7 +577,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 ##
@@ -589,7 +588,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -601,7 +600,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -613,7 +612,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -623,7 +622,7 @@ PrepMetaDataTreeAA()
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -633,7 +632,7 @@ PrepMetaDataTreeAA()
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -643,7 +642,7 @@ PrepMetaDataTreeAA()
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -655,7 +654,7 @@ to_drop <- c("MW676134.1_2_40-305")
 phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -665,7 +664,7 @@ PrepMetaDataTreeAA()
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
@@ -706,38 +705,52 @@ dev.off()
 virus_name <- "all_RdRp"
 output_name <- "all_RdRp"
 PrepMetaDataTreeAA()
+to_drop <- c("29JAN24DM1___barcode66.contigs.fasta______tig00000096_3_16-491",
+    "29JAN24DM1___barcode66.contigs.fasta______tig00000096_1_14-127",
+    "29JAN24DM1___barcode66.contigs.fasta______tig00000070_1_13-70")
+phytree <- drop.tip(phytree, to_drop)
 phytree <- drop.tip(phytree, non_representatives_vector)
 
 
 ### change some taxa names for color plotting
 ref.sam.metadata$RepresentativeName <- gsub("Apis rhabdovirus .*", "Apis rhabdovirus", ref.sam.metadata$RepresentativeName)
-ref.sam.metadata$RepresentativeName <- gsub("Allermuir.*", "Allermuir Hill virus", ref.sam.metadata$RepresentativeName)
 ref.sam.metadata$RepresentativeName <- gsub(".*cripavirus.*|.*Cripavirus.*", "Cripavirus", ref.sam.metadata$RepresentativeName)
-ref.sam.metadata$RepresentativeName <- gsub(".*partiti-like.*", "Partiti-like viruses", ref.sam.metadata$RepresentativeName)
-ref.sam.metadata$RepresentativeName <- gsub(".*virga-like.*|.*Mayfield.*", "Virga-like virus", ref.sam.metadata$RepresentativeName)
+ref.sam.metadata$RepresentativeName <- gsub(".*partiti-like.*", "Partiti-like virus", ref.sam.metadata$RepresentativeName)
+ref.sam.metadata$RepresentativeName <- gsub("Allermuir.*|.*virga-like.*", "Virga-like virus", ref.sam.metadata$RepresentativeName)
 ref.sam.metadata$RepresentativeName <- gsub("Bactrocera tryoni.*", "Bactrocera tryoni iflavirus", ref.sam.metadata$RepresentativeName)
 ref.sam.metadata$RepresentativeName <- gsub(".*phasma.*", "Phasmaviridae", ref.sam.metadata$RepresentativeName)
 ref.sam.metadata$RepresentativeName <- gsub("Aparavirus.*", "Aparavirus", ref.sam.metadata$RepresentativeName)
+ref.sam.metadata$RepresentativeName <- gsub(".*Mayfield.*", "Picorna-like virus", ref.sam.metadata$RepresentativeName)
 
 
 ref.sam.metadata <- ref.sam.metadata %>%
     mutate(RepresentativeName = ifelse(RepresentativeName %in% c("Triatovirus himetobi", "Triatovirus hocoagulatae", "Triatovirus plastali", "Triatovirus triatomae", "Triatovirus nigereginacellulae"), "Triatovirus", RepresentativeName))
 ref.sam.metadata$RepresentativeName <- gsub("Lake Sinai .irus.*|.*sinaivirus.*", "Lake Sinai virus", ref.sam.metadata$RepresentativeName)
 
+ref.sam.metadata$RepresentativeName <- gsub(".*nege-like.*|Wallerfield.*", "Nege-like virus", ref.sam.metadata$RepresentativeName)
 
 phytree <- phangorn::midpoint(phytree)
 
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(c("RepresentativeName"), "prot", 0.1)
+output <- TreeHeatmap(p, c("SuperBin"), "prot", 0.05, 0.5)
+output$p <- output$p + scale_fill_brewer(palette = "Set3")
+output$p <- output$p + new_scale_fill()
+
+output <- TreeHeatmap(output$p, c("RepresentativeName"), "prot", 0.05, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
+
+
 assign(output_name, output$p)
 
-ggsave(plot = last_plot(), "All_PfamAA_trees.pdf", dpi=300, scale=2, units = "cm")
-ggsave(plot = last_plot(), "All_PfamAA_trees.png", dpi=300, scale=2, units = "cm")
+ggsave(plot = all_RdRp, "FigPhyAA_AllRdRp.pdf", dpi=300, scale=2, units = "cm")
+ggsave(plot = all_RdRp, "FigPhyAA_AllRdRp.png", dpi=300, scale=2, units = "cm")
 
 
 
 
+# 26JAN24DM1___barcode54.contigs.fasta______tig00000104_1_168−528 = Nege-like virus DONE, filter out of NT tree
+# 29JAN24DM1___barcode66.contigs.fasta______tig00000096_1_14−127 = Iflavirus sacbroodi DONE, filter out of NT tree
+# reference Mayfield viruses including Mayfield virus 1-like are Picorna-like, not Partiti-like DONE
 
 
 ########## dN/dS
@@ -761,6 +774,6 @@ ggsave(plot = last_plot(), "All_PfamAA_trees.png", dpi=300, scale=2, units = "cm
 
 ########## msa
 
-library(ggmsa)
+#library(ggmsa)
 
-ggmsa("Pfam__RNA_dependent_RNA_polymerase__PF00680.aln", start = 221, end = 280, char_width = 0.5, seq_name = T)
+#ggmsa("Pfam__RNA_dependent_RNA_polymerase__PF00680.aln", start = 221, end = 280, char_width = 0.5, seq_name = T)
