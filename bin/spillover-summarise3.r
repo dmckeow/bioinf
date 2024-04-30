@@ -873,8 +873,6 @@ dev.off()
 ReShapeCorrel <- function() {
       physeq %>%
   ps_mutate(
-      collection_year = paste0(genus, collection_year),
-
       Apis = if_else(genus == "Apis", true = 1, false = 0),
       Bombus = if_else(genus == "Bombus", true = 1, false = 0),
       bimaculatus = if_else(species == "bimaculatus", true = 1, false = 0),
@@ -887,13 +885,9 @@ ReShapeCorrel <- function() {
     d_100 = if_else(distance == "100", true = 1, false = 0),
     d_500 = if_else(distance == "500", true = 1, false = 0),
     d_1500 = if_else(distance == "1500", true = 1, false = 0),
-    Apis2021 = if_else(collection_year == "Apis2021", true = 1, false = 0),
-    Apis2022 = if_else(collection_year == "Apis2022", true = 1, false = 0),
-    Apis2023 = if_else(collection_year == "Apis2023", true = 1, false = 0),
-    Bombus2021 = if_else(collection_year == "Bombus2021", true = 1, false = 0),
-    Bombus2022 = if_else(collection_year == "Bombus2022", true = 1, false = 0),
-    Bombus2023 = if_else(collection_year == "Bombus2023", true = 1, false = 0),
-
+    y_2021 = if_else(collection_year == "2021", true = 1, false = 0),
+    y_2022 = if_else(collection_year == "2022", true = 1, false = 0),
+    y_2023 = if_else(collection_year == "2023", true = 1, false = 0),
       May = ifelse(grepl("May", collection_month), 1, 0),
       June = ifelse(grepl("June", collection_month), 1, 0),
       July = ifelse(grepl("July", collection_month), 1, 0),
@@ -901,6 +895,8 @@ ReShapeCorrel <- function() {
       September = ifelse(grepl("September", collection_month), 1, 0),
       October = ifelse(grepl("October", collection_month), 1, 0),
       November = ifelse(grepl("November", collection_month), 1, 0),
+      #Summer = ifelse(grepl("June|July|August", collection_month), 1, 0),
+      #Autumn = ifelse(grepl("September|October|November", collection_month), 1, 0),
       Crosby = if_else(apiary == "Crosby", true = 1, false = 0),
       Golf = if_else(apiary == "Golf", true = 1, false = 0),
       Vet = if_else(apiary == "Vet", true = 1, false = 0),
@@ -939,11 +935,11 @@ Verbena= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Verbena"))
 
 psq_many <- ReShapeCorrel()
 
-#psq_many_Apis <- ReShapeCorrel() %>% 
- #     ps_filter(genus == "Apis")
+psq_many_Apis <- ReShapeCorrel() %>% 
+      ps_filter(genus == "Apis")
 
-#psq_many_Bombus <- ReShapeCorrel() %>%
-#      ps_filter(genus == "Bombus")
+psq_many_Bombus <- ReShapeCorrel() %>%
+      ps_filter(genus == "Bombus")
 
 
 
@@ -962,8 +958,11 @@ DrawCorHeatmap <- function(INPUT_PHYSEQ, VARS) {
 )
 }
 
-correlhm_genusspecies <- DrawCorHeatmap(psq_many, c("Apis", 
-      "Bombus", 
+correlhm_genus <- DrawCorHeatmap(psq_many, c("Apis", 
+      "Bombus"
+      ))
+
+correlhmB_species <- DrawCorHeatmap(psq_many_Bombus, c( 
       "bimaculatus", 
       "citrinus", # remove for plant viruses
       "griseocollis", 
@@ -971,11 +970,17 @@ correlhm_genusspecies <- DrawCorHeatmap(psq_many, c("Apis",
       "rufocinctus", 
       "vagans"))
 
-correlhm_year <- DrawCorHeatmap(psq_many, c("Apis2021", "Apis2022", "Apis2023", "Bombus2021", "Bombus2022", "Bombus2023"))
-correlhm_month <- DrawCorHeatmap(psq_many, c("May", "June", "July", "August", "September", "October", "November"))
+correlhmA_year <- DrawCorHeatmap(psq_many_Apis, c("y_2021", "y_2022", "y_2023"))
+correlhmA_month <- DrawCorHeatmap(psq_many_Apis, c("May", "June", "July", "August", "September", "October", "November"))
 
-correlhmA_site <- DrawCorHeatmap(psq_many_Apis, c("Crosby", "Golf", "Vet", "Colony", "d_100", "d_500", "d_1500"))
-correlhmB_site <- DrawCorHeatmap(psq_many_Bombus, c("Crosby", "Golf", "Vet", "Colony", "d_100", "d_500", "d_1500"))
+correlhmB_year <- DrawCorHeatmap(psq_many_Bombus, c("y_2021", "y_2022", "y_2023"))
+correlhmB_month <- DrawCorHeatmap(psq_many_Bombus, c("July", "August", "September"))
+
+correlhmA_apiary <- DrawCorHeatmap(psq_many_Apis, c("Crosby", "Golf", "Vet", "Colony"))
+correlhmB_apiary <- DrawCorHeatmap(psq_many_Bombus, c("Crosby", "Golf", "Vet", "Colony"))
+
+correlhmA_distance <- DrawCorHeatmap(psq_many_Apis, c("d_100", "d_500", "d_1500"))
+correlhmB_distance <- DrawCorHeatmap(psq_many_Bombus, c("d_100", "d_500", "d_1500"))
 
 correlhmA_flowers <- DrawCorHeatmap(psq_many_Apis, c(
       "Agastache",
@@ -1030,34 +1035,35 @@ correlhmB_flowers <- DrawCorHeatmap(psq_many_Bombus, c(
 "Trifolium"
       ))
 
-correlhmA_time <- correlhmA_time %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
-correlhmB_time <- correlhmB_time %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
 
-correlhmA_site <- correlhmA_site %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
-correlhmB_site <- correlhmB_site %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
+# List objects starting with "correlhm"
+list_correlhm <- ls() %>% grep("^correlhm", ., value = TRUE)
 
-correlhmA_flowers <- correlhmA_flowers %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
-correlhmB_flowers <- correlhmB_flowers %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr()
+# Loop through each correlhm object
+for (obj_name in list_correlhm) {
+  # Perform the specified operations
+  assign(obj_name, get(obj_name) %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr(), envir = .GlobalEnv)
+}
 
-png(paste0("FigR8", ".png"), width=18, height=16, res=300, unit="cm")
-correlhm_genusspecies
+png(paste0("FigR8", ".png"), width=36, height=16, res=300, unit="cm")
+cowplot::plot_grid(correlhm_genus, correlhmB_species, labels=c("A", "B"))
 dev.off()
-pdf(paste0("FigR8", ".pdf"), width=7, height=6)
-correlhm_genusspecies
-dev.off()
-
-png(paste0("FigR9", ".png"), width=36, height=16, res=300, unit="cm")
-cowplot::plot_grid(correlhmA_time, correlhmB_time, labels=c("A", "B"))
-dev.off()
-pdf(paste0("FigR9", ".pdf"), width=14, height=6)
-cowplot::plot_grid(correlhmA_time, correlhmB_time, labels=c("A", "B"))
+pdf(paste0("FigR8", ".pdf"), width=14, height=6)
+cowplot::plot_grid(correlhm_genus, correlhmB_species, labels=c("A", "B"))
 dev.off()
 
-png(paste0("FigR10", ".png"), width=36, height=16, res=300, unit="cm")
-cowplot::plot_grid(correlhmA_site, correlhmB_site, labels=c("A", "B"))
+png(paste0("FigR9", ".png"), width=36, height=32, res=300, unit="cm")
+cowplot::plot_grid(correlhmA_year, correlhmB_year, correlhmA_month, correlhmB_month, labels=c("A", "B", "C", "D"))
 dev.off()
-pdf(paste0("FigR10", ".pdf"), width=14, height=6)
-cowplot::plot_grid(correlhmA_site, correlhmB_site, labels=c("A", "B"))
+pdf(paste0("FigR9", ".pdf"), width=14, height=12)
+cowplot::plot_grid(correlhmA_year, correlhmB_year, correlhmA_month, correlhmB_month, labels=c("A", "B", "C", "D"))
+dev.off()
+
+png(paste0("FigR10", ".png"), width=36, height=32, res=300, unit="cm")
+cowplot::plot_grid(correlhmA_apiary, correlhmB_apiary, correlhmA_distance, correlhmB_distance, labels=c("A", "B", "C", "D"))
+dev.off()
+pdf(paste0("FigR10", ".pdf"), width=14, height=12)
+cowplot::plot_grid(correlhmA_apiary, correlhmB_apiary, correlhmA_distance, correlhmB_distance, labels=c("A", "B", "C", "D"))
 dev.off()
 
 png(paste0("FigR11", ".png"), width=48, height=16, res=300, unit="cm")
