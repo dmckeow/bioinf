@@ -351,8 +351,8 @@ labs(fill="# CSS norm. reads") +
 xlab("389 Apis samples, 137 Bombus samples")
 
 
-ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
+ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".png"), dpi=300, width = 36, height = 24, units = "cm")
 
 ###############################
 ###############################
@@ -552,43 +552,65 @@ RDS_year <- physeq %>%
       stat_ellipse(aes(colour = collection_year), linewidth = 0.75) +
 scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "2021" = Paired_pal[3], "2022" = Paired_pal[4], "2023" = Paired_pal[5]))
 
-UnconstrainedTaxaPCAFiltered <- function(FILTER_VAR, VAR) {
+UnconstrainedTaxaPCAFiltered <- function(FILTER_VAR, VAR, PLOT_TAXA) {
       physeq %>%
       ps_filter({{ FILTER_VAR }} == VAR) %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
       ord_calc(method="PCA"
             ) %>%
       ord_plot(
-            plot_taxa = 1:10,
+            plot_taxa = PLOT_TAXA,
             color = "genus",
-            size = 3, alpha = 0.8,
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 0, size = 3),
+            size = 2, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 45, size = 2),
             tax_vec_style_all  = vec_tax_all(colour = "grey30")) +
       theme(aspect.ratio = 1) +
       scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
 }
 
-Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(collection_year, "2021")
-Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(collection_year, "2022")
-Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(collection_year, "2023")
-Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(collection_month, "May")
-Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(collection_month, "June")
-Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(collection_month, "July")
-Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(collection_month, "August")
-Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(collection_month, "September")
-Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(collection_month, "October")
-Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(collection_month, "November")
+Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(collection_year, "2021", FALSE)
+Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(collection_year, "2022", FALSE)
+Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(collection_year, "2023", FALSE)
+Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(collection_month, "May", FALSE)
+Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(collection_month, "June", FALSE)
+Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(collection_month, "July", FALSE)
+Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(collection_month, "August", FALSE)
+Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(collection_month, "September", FALSE)
+Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(collection_month, "October", FALSE)
+Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(collection_month, "November", FALSE)
 
-cowplot::plot_grid(Unconstrained_PCA_2021,
-                  Unconstrained_PCA_2022,
-                  Unconstrained_PCA_2023,
-                  labels = c('A','B', 'C'))
+design <- "
+  2222
+  3333
+  4444
+"
 
-ggsave(plot=last_plot(), paste0("FigR16", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR16", ".png"), dpi=300, scale=2, units = "cm")
+(Ord_main + PCA_main_taxa) /
+(Unconstrained_PCA_2021 + Unconstrained_PCA_2022 + Unconstrained_PCA_2023) /
+(Unconstrained_PCA_July + Unconstrained_PCA_August + Unconstrained_PCA_September) +
+plot_annotation(tag_levels = 'A') +
+plot_layout(guides = 'collect', design = design)
 
+
+ggsave(plot=last_plot(), paste0("FigR16", ".pdf"), dpi=300, width=24, height=24, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR16", ".png"), dpi=300, width=24, height=24, units = "cm")
+
+
+Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(collection_year, "2021", 1:20)
+Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(collection_year, "2022", 1:20)
+Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(collection_year, "2023", 1:20)
+Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(collection_month, "May", 1:20)
+Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(collection_month, "June", 1:20)
+Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(collection_month, "July", 1:20)
+Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(collection_month, "August", 1:20)
+Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(collection_month, "September", 1:20)
+Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(collection_month, "October", 1:20)
+Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(collection_month, "November", 1:20)
 
 cowplot::plot_grid(
+                  Unconstrained_PCA_2021,
+                  Unconstrained_PCA_2022,
+                  Unconstrained_PCA_2023,
                   Unconstrained_PCA_May,
                   Unconstrained_PCA_June,
                   Unconstrained_PCA_July,
@@ -596,10 +618,11 @@ cowplot::plot_grid(
                   Unconstrained_PCA_September,
                   Unconstrained_PCA_October,
                   Unconstrained_PCA_November,
-                  labels = c('A','B', 'C','D','E', 'F', 'G'))
+                  labels = c('A','B','C','D','E','F','G', 'H', 'I', 'J'),
+                  ncol = 3)
 
-ggsave(plot=last_plot(), paste0("FigR17", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR17", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR17", ".pdf"), dpi=300, width=24, height=36, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR17", ".png"), dpi=300, width=24, height=36, units = "cm")
 
 #####
 month_shapes <- c("May" = 0, "June" = 1, "July" = 2, "August" = 3, "September" = 4, "October" = 5, "November" = 6)
@@ -737,15 +760,15 @@ ggsave(plot=last_plot(), paste0("FigR15", ".png"), dpi=300, scale=2, units = "cm
 ##############################################################################
 ### Permanova via adonsi2
 
-dfmd_PAN <- dfmd[dfmd$Sample_metadata_code %in% rownames(t(taxa_obj_CSS_PCA)), ] %>%
-      select(-seqrun, -real_analyses_name, -specific_read_source) %>%
-      distinct()
-permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_month * apiary * distance, data = dfmd_PAN, method="bray")
+#dfmd_PAN <- dfmd[dfmd$Sample_metadata_code %in% rownames(t(taxa_obj_CSS_PCA)), ] %>%
+      #select(-seqrun, -real_analyses_name, -specific_read_source) %>%
+      #distinct()
+#permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_month * apiary * distance, data = dfmd_PAN, method="bray")
 
-permanova2 <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * apiary * distance * flower_genus, data = dfmd_PAN, method="bray", na.action = "na.omit")
+#permanova2 <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * apiary * distance * flower_genus, data = dfmd_PAN, method="bray", na.action = "na.omit")
 
-write.table(permanova, "permanova.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
-write.table(permanova2, "permanova2.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
+#write.table(permanova, "permanova.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
+#write.table(permanova2, "permanova2.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
 
 #### composition plot
 CompoPlot <- function(filter_var) {
@@ -826,15 +849,24 @@ CompoBombusFC <- CompoPlot("Bombus", "RepresentativeName", "CompGroupForC", topP
 CompoPlots <- c(CompoApis, CompoBombus, CompoApisFC, CompoBombusFC)
 
 
-patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
+patch_CompoPlots <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
       plot_annotation(tag_levels = 'A')
 
-patch & coord_flip()
+patch_CompoPlots & coord_flip()
 
-ggsave(plot=last_plot(), paste0("FigR6", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR6", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR6.1", ".pdf"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR6.1", ".png"), dpi=300, scale=2, units = "cm")
+
+###
+CompoPlots <- c(CompoApis, CompoBombus)
+patch_CompoPlots <- patchwork::wrap_plots(CompoPlots, nrow = 2, guides = 'collect') &
+      plot_annotation(tag_levels = 'A')
+patch_CompoPlots <- patch_CompoPlots & coord_flip()
+cowplot::plot_grid(patch_CompoPlots, taxa_obj_CSS_HM_p, labels=c("", "G"), nrow = 2, ncol = 1)
 
 
+ggsave(plot=last_plot(), paste0("FigR6.2", ".pdf"), dpi=300, height=36, width = 48, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR6.2", ".png"), dpi=300, height=36, width = 48, units = "cm")
 
 ####### composition heatmap
   htmp <- physeq %>%
@@ -860,12 +892,6 @@ DrawCompHeatmap <- function() {
 )
 }
 
-png(paste0("FigR7", ".png"), width=18, height=12, res=300, unit="cm")
-DrawCompHeatmap()
-dev.off()
-pdf(paste0("FigR7", ".pdf"), width=8, height=8)
-DrawCompHeatmap()
-dev.off()
 
 ######### correlations heatmap
 
@@ -933,16 +959,6 @@ Verbena= ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Verbena"))
   )
 }
 
-psq_many <- ReShapeCorrel()
-
-psq_many_Apis <- ReShapeCorrel() %>% 
-      ps_filter(genus == "Apis")
-
-psq_many_Bombus <- ReShapeCorrel() %>%
-      ps_filter(genus == "Bombus")
-
-
-
 #  draw the heatmap
 DrawCorHeatmap <- function(INPUT_PHYSEQ, VARS) {
       INPUT_PHYSEQ %>%
@@ -957,6 +973,50 @@ DrawCorHeatmap <- function(INPUT_PHYSEQ, VARS) {
       column_names_gp = grid::gpar(fontsize = 8)
 )
 }
+
+
+psq_many <- ReShapeCorrel()
+
+psq_many_Apis <- ReShapeCorrel() %>% 
+      ps_filter(genus == "Apis")
+
+psq_many_Bombus <- ReShapeCorrel() %>%
+      ps_filter(genus == "Bombus")
+
+########### split by year and genus
+
+psq_many_2021 <- ReShapeCorrel() %>% 
+      ps_filter(collection_year == "2021")
+
+correlhm_genus2021 <- DrawCorHeatmap(psq_many_2021, c("Apis", "Bombus"))
+
+psq_many_2022 <- ReShapeCorrel() %>% 
+      ps_filter(collection_year == "2022")
+
+correlhm_genus2022 <- DrawCorHeatmap(psq_many_2022, c("Apis", "Bombus"))
+
+psq_many_2023 <- ReShapeCorrel() %>% 
+      ps_filter(collection_year == "2023")
+
+correlhm_genus2023 <- DrawCorHeatmap(psq_many_2023, c("Apis", "Bombus"))
+
+########### split by month and genus (only months with both genera sampled)
+
+psq_many_month <- ReShapeCorrel() %>% 
+      ps_filter(collection_month == "July")
+
+correlhm_genusJuly <- DrawCorHeatmap(psq_many_month, c("Apis", "Bombus"))
+
+psq_many_month <- ReShapeCorrel() %>% 
+      ps_filter(collection_month == "August")
+
+correlhm_genusAugust <- DrawCorHeatmap(psq_many_month, c("Apis", "Bombus"))
+
+psq_many_month <- ReShapeCorrel() %>% 
+      ps_filter(collection_month == "September")
+
+correlhm_genusSeptember <- DrawCorHeatmap(psq_many_month, c("Apis", "Bombus"))
+
 
 correlhm_genus <- DrawCorHeatmap(psq_many, c("Apis", 
       "Bombus"
@@ -1044,6 +1104,23 @@ for (obj_name in list_correlhm) {
   # Perform the specified operations
   assign(obj_name, get(obj_name) %>% ComplexHeatmap::draw() %>% grid::grid.grabExpr(), envir = .GlobalEnv)
 }
+
+
+png(paste0("FigR7", ".png"), width=48, height=32, res=300, unit="cm")
+cowplot::plot_grid(correlhm_genus2021, correlhm_genus2022, correlhm_genus2023,
+correlhm_genusJuly, correlhm_genusAugust, correlhm_genusSeptember,
+labels=c("A", "B", "C", "D", "E", "F"),
+ncol = 3, nrow = 2)
+dev.off()
+
+pdf(paste0("FigR7", ".pdf"), width=18, height=12)
+cowplot::plot_grid(correlhm_genus2021, correlhm_genus2022, correlhm_genus2023,
+correlhm_genusJuly, correlhm_genusAugust, correlhm_genusSeptember,
+labels=c("A", "B", "C", "D", "E", "F"),
+ncol = 3, nrow = 2)
+dev.off()
+
+
 
 png(paste0("FigR8", ".png"), width=36, height=16, res=300, unit="cm")
 cowplot::plot_grid(correlhm_genus, correlhmB_species, labels=c("A", "B"))
