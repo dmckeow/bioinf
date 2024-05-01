@@ -316,6 +316,8 @@ assign(output_name, output$p)
 virus_name <- "Reo_like"
 output_name <- "Reo_like"
 PrepMetaDataTreeDNA()
+to_drop <- ref.sam.metadata$contigAln.x[ref.sam.metadata$RepresentativeName == "Phocid orthoreovirus 1"]
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)

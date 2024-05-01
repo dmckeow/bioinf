@@ -328,6 +328,7 @@ TaxaFilter <- function(data){
       filter(!grepl('clover', RepresentativeName)) %>%
       filter(!grepl('Amaranthus', RepresentativeName)) %>%
       filter(!grepl('sativa', RepresentativeName)) %>%
+      filter(!grepl('Phocid orthoreovirus', RepresentativeName)) %>%
       mutate(SuperBin=gsub("; $", "", SuperBin)) %>%
       mutate(SuperBin=gsub(".*; ", "", SuperBin)) %>%
       mutate(SuperBin=gsub(";$", "", SuperBin))
@@ -435,7 +436,7 @@ PlotOrdUnconsrained <- function() {
 
 PlotOrdUnconsrainedOthers <- function(VAR) {
       PCoA_physeq %>%
-  ord_plot(shape = "genus", color = VAR, alpha = 1.0, size = 3) +
+  ord_plot(shape = "genus", color = VAR, alpha = 0.8, size = 2) +
   ggside::theme_ggside_void() +
   theme(aspect.ratio = 1) +
   guides(fill = guide_legend(reverse = FALSE)) +
@@ -518,7 +519,7 @@ ggsave(plot=last_plot(), paste0("FigR4", ".png"), dpi=300, scale=2, units = "cm"
       ord_plot(
             plot_taxa = TRUE,
             color = "genus",
-            size = 3, alpha = 0.8,
+            size = 2, alpha = 0.8,
             tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
@@ -580,20 +581,22 @@ Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(collection_month, "Oct
 Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(collection_month, "November", FALSE)
 
 design <- "
-  2222
-  3333
-  4444
+  AAA#BBB
+  AAA#BBB
+  AAA#BBB
+  AAA#BBB
+  CDE#FGH
 "
 
-(Ord_main + PCA_main_taxa) /
-(Unconstrained_PCA_2021 + Unconstrained_PCA_2022 + Unconstrained_PCA_2023) /
-(Unconstrained_PCA_July + Unconstrained_PCA_August + Unconstrained_PCA_September) +
+Ord_main + PCA_main_taxa +
+Unconstrained_PCA_2021 + Unconstrained_PCA_2022 + Unconstrained_PCA_2023 +
+Unconstrained_PCA_July + Unconstrained_PCA_August + Unconstrained_PCA_September +
 plot_annotation(tag_levels = 'A') +
 plot_layout(guides = 'collect', design = design)
 
 
-ggsave(plot=last_plot(), paste0("FigR16", ".pdf"), dpi=300, width=24, height=24, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR16", ".png"), dpi=300, width=24, height=24, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR16", ".pdf"), dpi=300, width=36, height=24, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR16", ".png"), dpi=300, width=36, height=24, units = "cm")
 
 
 Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(collection_year, "2021", 1:20)
@@ -611,18 +614,18 @@ cowplot::plot_grid(
                   Unconstrained_PCA_2021,
                   Unconstrained_PCA_2022,
                   Unconstrained_PCA_2023,
-                  Unconstrained_PCA_May,
-                  Unconstrained_PCA_June,
+                  #Unconstrained_PCA_May,
+                  #Unconstrained_PCA_June,
                   Unconstrained_PCA_July,
                   Unconstrained_PCA_August,
                   Unconstrained_PCA_September,
-                  Unconstrained_PCA_October,
-                  Unconstrained_PCA_November,
-                  labels = c('A','B','C','D','E','F','G', 'H', 'I', 'J'),
+                  #Unconstrained_PCA_October,
+                  #Unconstrained_PCA_November,
+                  labels = c('A','B','C','D','E','F'),
                   ncol = 3)
 
-ggsave(plot=last_plot(), paste0("FigR17", ".pdf"), dpi=300, width=24, height=36, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR17", ".png"), dpi=300, width=24, height=36, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR17", ".pdf"), dpi=300, width=36, height=24, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR17", ".png"), dpi=300, width=36, height=24, units = "cm")
 
 #####
 month_shapes <- c("May" = 0, "June" = 1, "July" = 2, "August" = 3, "September" = 4, "October" = 5, "November" = 6)
@@ -760,15 +763,12 @@ ggsave(plot=last_plot(), paste0("FigR15", ".png"), dpi=300, scale=2, units = "cm
 ##############################################################################
 ### Permanova via adonsi2
 
-#dfmd_PAN <- dfmd[dfmd$Sample_metadata_code %in% rownames(t(taxa_obj_CSS_PCA)), ] %>%
-      #select(-seqrun, -real_analyses_name, -specific_read_source) %>%
-      #distinct()
-#permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_month * apiary * distance, data = dfmd_PAN, method="bray")
+dfmd_PAN <- dfmd[dfmd$Sample_metadata_code %in% rownames(t(taxa_obj_CSS_PCA)), ] %>%
+      select(-seqrun, -real_analyses_name, -specific_read_source) %>%
+      distinct()
+permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_month * apiary * distance, data = dfmd_PAN, method="bray", na.rm = TRUE)
 
-#permanova2 <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * apiary * distance * flower_genus, data = dfmd_PAN, method="bray", na.action = "na.omit")
-
-#write.table(permanova, "permanova.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
-#write.table(permanova2, "permanova2.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
+write.table(permanova, "permanova.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
 
 #### composition plot
 CompoPlot <- function(filter_var) {
@@ -1278,8 +1278,8 @@ CoverageDepths_filt <- CoverageDepths %>%
       filter(Length > 1000) %>%
       filter(grepl('NO', WasContigRemovedByDerep)) %>% 
       select(-percent_of_contig_len_with_over_nX_coverage, -cov_category, -total_bases_over_5_coverage, -total_bases_over_10_coverage, -total_bases_over_100_coverage) %>%
-      distinct() %>%
-      filter(!grepl('Chronic bee|Cripavirus|Aparavirus|partiti-like|permutotetra|rhabdovirus|Agassiz|Mayfield|Loch|hasma-related|interruptus|picorna-like|Lake Sinai virus 3|Lake Sinai virus 6|Lake Sinai virus 1|virus Reo1|Unclassified sinaivirus|mosaic virus|Peanut|potexvirus|seed borne|betaflexiviridae|Apple|Prunus|mottle virus|Nepovirus|Turnip|Comovirus|comovirus', RepresentativeName))
+      distinct() #%>%
+      #filter(!grepl('Chronic bee|Cripavirus|Aparavirus|partiti-like|permutotetra|rhabdovirus|Agassiz|Mayfield|Loch|hasma-related|interruptus|picorna-like|Lake Sinai virus 3|Lake Sinai virus 6|Lake Sinai virus 1|virus Reo1|Unclassified sinaivirus|mosaic virus|Peanut|potexvirus|seed borne|betaflexiviridae|Apple|Prunus|mottle virus|Nepovirus|Turnip|Comovirus|comovirus', RepresentativeName))
 
 CoverageDepths_filt$Length <- as.numeric(CoverageDepths_filt$Length)
 
@@ -1312,11 +1312,11 @@ sink()
 #################################
 
 CoverageDepths_filt %>% ggplot(aes(genus, Length, fill=genus, color = genus)) + 
-geom_beeswarm(size = 2, alpha = 0.8) +
-facet_nested_wrap(. ~ SuperBin + RepresentativeName, scales = "free", ncol = 3) 
+geom_beeswarm(size = 0.5) +
+facet_nested_wrap(. ~ RepresentativeName, scales = "free", ncol = 6)
 
-ggsave(plot=last_plot(), paste0("FigR13", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR13", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR13", ".pdf"), dpi=300, width = 48, height = 36, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR13", ".png"), dpi=300, width = 48, height = 36, units = "cm")
 
 ########################################################
 ########################################################
