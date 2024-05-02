@@ -124,7 +124,7 @@ PrepMetadata()
 
 #for (file in file_list) {
 #	output_name <- gsub("fastANI/|\\.matrix", "", file)
-# 	ReadMatrix(file)
+#ReadMatrix(file)
 
 # 	png(paste0(output_name, ".network", ".png"), width=800, height=800, res=300, unit="px")
 # 	PlotNetwork(ref.sam.metadata.sample$genus)
@@ -203,3 +203,77 @@ for (file in file_list) {
 	PrepForCytoscapeBlast()
  	write.table(blastp.ref.sam.metadata, paste0(output_name, ".blastp.metadata.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
 }
+
+
+
+########### plot with igraph
+
+PlotNetwork2 <- function(INPUT_DATA, METADATA, weight_var, color_var) {
+	set.seed(4)
+	network <- graph_from_data_frame(INPUT_DATA)
+	#isolated = which(degree(network)==0) ## get isolated vertices
+	#network = delete_vertices(network, isolated) ## remoev the isolated verteices
+	#layout = layout_with_fr(network) ## get network layout without the isolated vertices
+	#layout = layout[-isolated,] ## get network layout without the isolated vertices
+
+	#is_simple(simplify(network, remove.loops = TRUE, remove.multiple = TRUE))
+	#cluster_label_prop(network)
+
+	#network_df <- as_data_frame(network)
+	#ref.sam.metadata.sample <<- network_df %>%
+	#	left_join(METADATA, by = c('from' = 'contig')) %>%
+	#	select(-to)
+
+	# Map the color to color_var
+	coul <- brewer.pal(nlevels(as.factor(METADATA$color_var)), "Set1")
+	my_color <- coul[as.numeric(as.factor(METADATA$color_var))]
+	par(bg="black", mar=c(0,0,0,0))
+	sn_color_range <- colorRampPalette(c("grey50","grey40","grey30","grey20"))
+	sn_color <- sn_color_range(length(INPUT_DATA$weight_var))
+
+	plot.igraph(network, 
+    	vertex.size=4,
+    	vertex.color=my_color,
+    	vertex.label=NA,
+    	vertex.frame.color="transparent",
+    	edge.color=sn_color,
+    	edge.width=1
+    	)
+	legend("bottomleft", 
+      	 legend=paste(levels(as.factor(METADATA$color_var)), sep=""), 
+      	 col = coul , 
+      	 bty = "n", pch=20 , pt.cex = 1, cex = 0.5,
+      	 text.col="white" , horiz = F)
+
+   }
+
+
+
+all_RdRp.blastp <- read.csv("iprscansplit/all_RdRp.blastp", header=TRUE, sep="\t")
+all_RdRp.blastp <- all_RdRp.blastp %>%
+		select(from, to, pident) %>%
+		filter(pident >= 95)
+
+all_RdRp.blastp_md <- read.csv("all_RdRp.blastp.metadata.cytoscape.tsv", header=TRUE, sep="\t")
+
+
+all_RdRp.blastp_test <- all_RdRp.blastp %>%
+    filter(str_detect(from, "01FEB24DM1___"))
+
+all_RdRp.blastp_md_test <- all_RdRp.blastp_md %>%
+		filter(str_detect(from, "01FEB24DM1___") | str_detect(to, "01FEB24DM1___"))
+
+#all_RdRp.blastp_m <- pivot_wider(all_RdRp.blastp, id_cols = to, names_from = from, values_from = pident) %>% as.data.frame()
+#rownames(all_RdRp.blastp_m) <- all_RdRp.blastp_m$to
+#all_RdRp.blastp_m <- all_RdRp.blastp_m %>% select(-to)
+
+
+PlotNetwork2(all_RdRp.blastp, all_RdRp.blastp_md, "pident", "genus")
+
+	network <- graph_from_data_frame(all_RdRp.blastp_test, vertices = all_RdRp.blastp_md_test)
+	plot.igraph(network, 
+    	vertex.size=4,
+    	vertex.label=NA,
+    	vertex.frame.color="transparent",
+    	edge.width=1
+    	)

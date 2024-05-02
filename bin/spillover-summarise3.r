@@ -793,29 +793,33 @@ CompoPlot <- function(filter_var) {
 #########or plto as faceted single figure
 
 myPal <- tax_palette(
-  data = physeq, rank = "SuperBin", n = 12, pal = "brewerPlus"
+  data = physeq, rank = "SuperBin", n = 20, pal = "brewerPlus"
 )
 
-topPal <- tax_palette(physeq, pal = "brewerPlus", rank = "RepresentativeName", n = 12, add = NA)
+topPal <- tax_palette(physeq, pal = "brewerPlus", rank = "RepresentativeName", n = 20, add = NA)
 names(topPal) <- sort(names(topPal))
 topPal["Other"] <- "black"
 
-CompoPlot <- function(FILTER_VAR, TAXLEV, MERGE, PALETTE) {
-      physeq %>%
+CompoPlot <- function(INPUT, GROUP_BY, FILTER_VAR, TAXLEV, MERGE, PALETTE) {
+      INPUT %>%
       ps_filter(genus == FILTER_VAR) %>%
       ps_mutate(
             season = recode(collection_month, May = "Spring", June = "Summer", July = "Summer", August = "Summer", September = "Autumn", October = "Autumn", November = "Autumn"),
-            CompGroup = paste0(collection_year, season, apiary),
+            ColonyTransDate = gsub(".*_(date[0-9]+$)", "\\1", sample_info1),
+            ColonyTransDate = gsub("^(?!.*date[0-9]+$).*$", "Not_transplanted", ColonyTransDate, perl = TRUE),
+            ColonyTransDate = recode(ColonyTransDate, date0 = "w_0", date1 = "w_1", date2 = "w_2", date3 = "w_3", date4 = "w_4", date5 = "w_5", date6 = "w_6"),
+            CompGroup = paste0(collection_year, collection_month, apiary),
             flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower"),
-            CompGroupForC = paste0(collection_year, flower_or_colony)
+            CompGroupForC = paste0(collection_year, flower_or_colony),
+            ColonyTransDateCompGroup = paste0(CompGroupForC, " ", apiary, " ", ColonyTransDate)
             ) %>%
       phyloseq::merge_samples(MERGE) %>%
   comp_barplot(
-    tax_level = TAXLEV, n_taxa = 12,
+    tax_level = TAXLEV, n_taxa = 20,
     bar_width = 0.7,
     merge_other = FALSE, bar_outline_colour = NA,
     tax_transform_for_plot = "compositional",
-    group_by = "collection_year",
+    group_by = GROUP_BY,
     palette = PALETTE,
     sample_order = "bray",
     tax_order = names(PALETTE),
@@ -823,45 +827,58 @@ CompoPlot <- function(FILTER_VAR, TAXLEV, MERGE, PALETTE) {
   )
 }
 
-CompoApis <- CompoPlot("Apis", "SuperBin", "CompGroup", myPal)
-CompoBombus <- CompoPlot("Bombus", "SuperBin", "CompGroup", myPal)
+#### transplatnt colony samples
+CompoTrans <- CompoPlot(physeq, "collection_year", "Bombus", "RepresentativeName", "ColonyTransDateCompGroup", topPal)
+patchTrans <- patchwork::wrap_plots(CompoTrans, guides = 'collect', ncol = 1, heights = c(1, 1, 3)) &
+      plot_annotation(tag_levels = 'A')
 
-CompoApisFC <- CompoPlot("Apis", "SuperBin", "CompGroupForC", myPal)
-CompoBombusFC <- CompoPlot("Bombus", "SuperBin", "CompGroupForC", myPal)
+patchTrans & coord_flip() & guides(fill=guide_legend(ncol =1))
+
+ggsave(plot=last_plot(), paste0("FigR18", ".pdf"), dpi=300, height = 30, width = 36, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR18", ".png"), dpi=300, height = 30, width = 36, units = "cm")
+
+###########
+
+
+CompoApis <- CompoPlot(physeq, "collection_year", "Apis", "SuperBin", "CompGroup", myPal)
+CompoBombus <- CompoPlot(physeq, "collection_year", "Bombus", "SuperBin", "CompGroup", myPal)
+
+CompoApisFC <- CompoPlot(physeq, "collection_year", "Apis", "SuperBin", "CompGroupForC", myPal)
+CompoBombusFC <- CompoPlot(physeq, "collection_year", "Bombus", "SuperBin", "CompGroupForC", myPal)
 
 CompoPlots <- c(CompoApis, CompoBombus, CompoApisFC, CompoBombusFC)
 
-patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
+patch <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect', heights = c(4, 4, 1, 1)) &
       plot_annotation(tag_levels = 'A')
 
-patch & coord_flip()
+patch & coord_flip() & guides(fill=guide_legend(ncol =1))
 
 ggsave(plot=last_plot(), paste0("FigR5", ".pdf"), dpi=300, scale=2, units = "cm")
 ggsave(plot=last_plot(), paste0("FigR5", ".png"), dpi=300, scale=2, units = "cm")
 
 
-CompoApis <- CompoPlot("Apis", "RepresentativeName", "CompGroup", topPal)
-CompoBombus <- CompoPlot("Bombus", "RepresentativeName", "CompGroup", topPal)
+CompoApis <- CompoPlot(physeq, "collection_year", "Apis", "RepresentativeName", "CompGroup", topPal)
+CompoBombus <- CompoPlot(physeq, "collection_year", "Bombus", "RepresentativeName", "CompGroup", topPal)
 
-CompoApisFC <- CompoPlot("Apis", "RepresentativeName", "CompGroupForC", topPal)
-CompoBombusFC <- CompoPlot("Bombus", "RepresentativeName", "CompGroupForC", topPal)
+CompoApisFC <- CompoPlot(physeq, "collection_year", "Apis", "RepresentativeName", "CompGroupForC", topPal)
+CompoBombusFC <- CompoPlot(physeq, "collection_year", "Bombus", "RepresentativeName", "CompGroupForC", topPal)
 
 CompoPlots <- c(CompoApis, CompoBombus, CompoApisFC, CompoBombusFC)
 
 
-patch_CompoPlots <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect') &
+patch_CompoPlots <- patchwork::wrap_plots(CompoPlots, nrow = 4, guides = 'collect', heights = c(4, 4, 1, 1)) &
       plot_annotation(tag_levels = 'A')
 
-patch_CompoPlots & coord_flip()
+patch_CompoPlots & coord_flip() & guides(fill=guide_legend(ncol =1))
 
 ggsave(plot=last_plot(), paste0("FigR6.1", ".pdf"), dpi=300, scale=2, units = "cm")
 ggsave(plot=last_plot(), paste0("FigR6.1", ".png"), dpi=300, scale=2, units = "cm")
 
 ###
 CompoPlots <- c(CompoApis, CompoBombus)
-patch_CompoPlots <- patchwork::wrap_plots(CompoPlots, nrow = 2, guides = 'collect') &
+patch_CompoPlots <- patchwork::wrap_plots(CompoPlots, nrow = 2, guides = 'collect', heights = c(1.5, 1)) &
       plot_annotation(tag_levels = 'A')
-patch_CompoPlots <- patch_CompoPlots & coord_flip()
+patch_CompoPlots <- patch_CompoPlots & coord_flip() & guides(fill=guide_legend(ncol =1))
 cowplot::plot_grid(patch_CompoPlots, taxa_obj_CSS_HM_p, labels=c("", "G"), nrow = 2, ncol = 1)
 
 
