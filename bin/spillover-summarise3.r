@@ -553,32 +553,33 @@ RDS_year <- physeq %>%
       stat_ellipse(aes(colour = collection_year), linewidth = 0.75) +
 scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "2021" = Paired_pal[3], "2022" = Paired_pal[4], "2023" = Paired_pal[5]))
 
-UnconstrainedTaxaPCAFiltered <- function(FILTER_VAR, VAR, PLOT_TAXA) {
-      physeq %>%
+UnconstrainedTaxaPCAFiltered <- function(INPUT, FILTER_VAR, VAR, PLOT_TAXA, COLOR_VAR, SHAPE_VAR) {
+      INPUT %>%
       ps_filter({{ FILTER_VAR }} == VAR) %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
       ord_calc(method="PCA"
             ) %>%
       ord_plot(
             plot_taxa = PLOT_TAXA,
-            color = "genus",
+            color = COLOR_VAR,
+            shape = SHAPE_VAR,
             size = 2, alpha = 0.8,
             tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 45, size = 2),
             tax_vec_style_all  = vec_tax_all(colour = "grey30")) +
-      theme(aspect.ratio = 1) +
-      scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+      theme(aspect.ratio = 1)
 }
 
-Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(collection_year, "2021", FALSE)
-Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(collection_year, "2022", FALSE)
-Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(collection_year, "2023", FALSE)
-Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(collection_month, "May", FALSE)
-Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(collection_month, "June", FALSE)
-Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(collection_month, "July", FALSE)
-Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(collection_month, "August", FALSE)
-Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(collection_month, "September", FALSE)
-Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(collection_month, "October", FALSE)
-Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(collection_month, "November", FALSE)
+Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2021", FALSE, "genus", 16)
+Unconstrained_PCA_2021 <- Unconstrained_PCA_2021 + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2022", FALSE, "genus", 16)
+Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2023", FALSE, "genus", 16)
+Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "May", FALSE, "genus", 16)
+Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "June", FALSE, "genus", 16)
+Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "July", FALSE, "genus", 16)
+Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "August", FALSE, "genus", 16)
+Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "September", FALSE, "genus", 16)
+Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "October", FALSE, "genus", 16)
+Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "November", FALSE, "genus", 16)
 
 design <- "
   AAA#BBB
@@ -599,16 +600,38 @@ ggsave(plot=last_plot(), paste0("FigR16", ".pdf"), dpi=300, width=36, height=24,
 ggsave(plot=last_plot(), paste0("FigR16", ".png"), dpi=300, width=36, height=24, units = "cm")
 
 
-Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(collection_year, "2021", 1:20)
-Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(collection_year, "2022", 1:20)
-Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(collection_year, "2023", 1:20)
-Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(collection_month, "May", 1:20)
-Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(collection_month, "June", 1:20)
-Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(collection_month, "July", 1:20)
-Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(collection_month, "August", 1:20)
-Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(collection_month, "September", 1:20)
-Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(collection_month, "October", 1:20)
-Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(collection_month, "November", 1:20)
+#####
+# plot for transplantation Bombus
+physeq_t_Bombus <- physeq %>%
+      ps_filter(genus == "Bombus") %>%
+      ps_mutate(
+            FilterBypass = gsub(".*", "1", collection_year),
+            ColonyTransDate = gsub(".*_(date[0-9]+$)", "\\1", sample_info1),
+            ColonyTransDate = gsub("^(?!.*date[0-9]+$).*$", "Not_transplanted", ColonyTransDate, perl = TRUE),
+            ColonyTransDate = recode(ColonyTransDate, date0 = "w_0", date1 = "w_1", date2 = "w_2", date3 = "w_3", date4 = "w_4", date5 = "w_5", date6 = "w_6"),
+            CompGroup = paste0(collection_year, collection_month, apiary),
+            flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower"),
+            CompGroupForC = paste0(collection_year, flower_or_colony),
+            ColonyTransDateCompGroup = paste0(CompGroupForC, " ", apiary, " ", ColonyTransDate)
+            )
+Unconstrained_PCA_Bombus_t <- UnconstrainedTaxaPCAFiltered(physeq_t_Bombus, FilterBypass, "1", 1:20, "ColonyTransDate", "collection_year")
+Unconstrained_PCA_Bombus_t <- Unconstrained_PCA_Bombus_t + scale_colour_viridis_d(option = "turbo")
+
+ggsave(plot=Unconstrained_PCA_Bombus_t, paste0("FigR19", ".pdf"), dpi=300, width=36, height=24, units = "cm")
+ggsave(plot=Unconstrained_PCA_Bombus_t, paste0("FigR19", ".png"), dpi=300, width=36, height=24, units = "cm")
+
+#####
+
+Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2021", 1:20, "genus", 16)
+Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2022", 1:20, "genus", 16)
+Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2023", 1:20, "genus", 16)
+Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "May", 1:20, "genus", 16)
+Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "June", 1:20, "genus", 16)
+Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "July", 1:20, "genus", 16)
+Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "August", 1:20, "genus", 16)
+Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "September", 1:20, "genus", 16)
+Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "October", 1:20, "genus", 16)
+Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "November", 1:20, "genus", 16)
 
 cowplot::plot_grid(
                   Unconstrained_PCA_2021,
