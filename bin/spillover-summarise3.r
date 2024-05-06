@@ -231,8 +231,19 @@ dfMapping <- transform(
       FUN = sum)
       ))
 
+########## other metadata filters
 
+## remove Bombus species that are not impatiens
+HostFilter <- function(data){
+      data %>%
+      filter(genus == "Apis" | (genus == "Bombus" & species == "impatiens"))
+}
 
+dfContigs <- dfContigs %>% 
+      HostFilter()
+
+dfMapping <- dfMapping %>% 
+      HostFilter()
 #############################################
 #############################################
 #############################################
@@ -335,6 +346,7 @@ TaxaFilter <- function(data){
 }
 
 
+
 taxa_obj_CSS_HM_p <- taxa_obj_CSS_HM %>%
       TaxaFilter() %>%
 ggplot(aes(x=Sample_metadata_code, y=RepresentativeName, fill=CSSCountReadsMapped)) + 
@@ -349,8 +361,8 @@ theme(axis.title.y = element_blank()) +
 theme(strip.placement = "outside") +
 theme(ggh4x.facet.nestline = element_line(colour = "black")) +
 labs(fill="# CSS norm. reads") +
-xlab("389 Apis samples, 137 Bombus samples")
-
+xlab("389 Apis mellifera samples, 117 Bombus impatiens samples") # Bombus impatiens only
+#xlab("389 Apis samples, 137 Bombus samples") # with all Bombus species
 
 ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
 ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".png"), dpi=300, width = 36, height = 24, units = "cm")
@@ -478,15 +490,9 @@ scale_color_manual(name = "Distance in m from colony", values = c(
 Ord_main_apiary <- PlotOrdUnconsrainedOthers("apiary") + 
       
 scale_color_manual(name = "Apiary", values = c(
-  "Colony3237" = "#a6cee3",   # light blue
-  "Colony34" = "#b2df8a",  # light green
   "Crosby" = "#33a02c",  # dark green
-  "CoonRapids" = "#fb9a99",  # light red
-  "CoonRapids1" = "#fdbf6f",  # light orange
   "Golf" = "#ff7f00",  # dark orange
-  "Eagan" = "#cab2d6",  # light purple
-  "Vet" = "#6a3d9a", # dark purple
-  "Woodbury" = "#ffff99" # light yellow
+  "Vet" = "#6a3d9a" # dark purple
 ), na.value = "black")
 
 Ord_main_flowers <- PlotOrdUnconsrainedOthers("flower_genus") + 
@@ -545,13 +551,12 @@ RDS_year <- physeq %>%
             "y_2022",
             "y_2023"
             )) %>%
-      ord_plot(plot_taxa = 1:5, color = "genus", size = 3, alpha = 0.8, shape = "collection_year", 
+      ord_plot(plot_taxa = 1:20, shape = "genus", size = 3, alpha = 0.8, color = "collection_year", 
             tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
-      stat_ellipse(aes(colour = collection_year), linewidth = 0.75) +
-scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "2021" = Paired_pal[3], "2022" = Paired_pal[4], "2023" = Paired_pal[5]))
+scale_color_manual(values = c("2021" = Paired_pal[3], "2022" = Paired_pal[4], "2023" = Paired_pal[5]))
 
 UnconstrainedTaxaPCAFiltered <- function(INPUT, FILTER_VAR, VAR, PLOT_TAXA, COLOR_VAR, SHAPE_VAR) {
       INPUT %>%
@@ -571,15 +576,33 @@ UnconstrainedTaxaPCAFiltered <- function(INPUT, FILTER_VAR, VAR, PLOT_TAXA, COLO
 
 Unconstrained_PCA_2021 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2021", FALSE, "genus", 16)
 Unconstrained_PCA_2021 <- Unconstrained_PCA_2021 + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_2022 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2022", FALSE, "genus", 16)
+Unconstrained_PCA_2022 <- Unconstrained_PCA_2022 + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_2023 <- UnconstrainedTaxaPCAFiltered(physeq, collection_year, "2023", FALSE, "genus", 16)
+Unconstrained_PCA_2023 <- Unconstrained_PCA_2023 + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_May <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "May", FALSE, "genus", 16)
+Unconstrained_PCA_May <- Unconstrained_PCA_May + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_June <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "June", FALSE, "genus", 16)
+Unconstrained_PCA_June <- Unconstrained_PCA_June + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_July <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "July", FALSE, "genus", 16)
+Unconstrained_PCA_July <- Unconstrained_PCA_July + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_August <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "August", FALSE, "genus", 16)
+Unconstrained_PCA_August <- Unconstrained_PCA_August + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_September <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "September", FALSE, "genus", 16)
+Unconstrained_PCA_September <- Unconstrained_PCA_September + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_October <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "October", FALSE, "genus", 16)
+Unconstrained_PCA_October <- Unconstrained_PCA_October + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
 Unconstrained_PCA_November <- UnconstrainedTaxaPCAFiltered(physeq, collection_month, "November", FALSE, "genus", 16)
+Unconstrained_PCA_November <- Unconstrained_PCA_November + scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
 
 design <- "
   AAA#BBB
@@ -606,16 +629,23 @@ physeq_t_Bombus <- physeq %>%
       ps_filter(genus == "Bombus") %>%
       ps_mutate(
             FilterBypass = gsub(".*", "1", collection_year),
-            ColonyTransDate = gsub(".*_(date[0-9]+$)", "\\1", sample_info1),
-            ColonyTransDate = gsub("^(?!.*date[0-9]+$).*$", "Not_transplanted", ColonyTransDate, perl = TRUE),
-            ColonyTransDate = recode(ColonyTransDate, date0 = "w_0", date1 = "w_1", date2 = "w_2", date3 = "w_3", date4 = "w_4", date5 = "w_5", date6 = "w_6"),
+            ColonyTransDate = gsub("^(?!.*date[0-9]+$).*$", "Not_transplanted", sample_info3, perl = TRUE),
+            ColonyTransDate = ifelse(is.na(ColonyTransDate), "Not_transplanted", ColonyTransDate),
             CompGroup = paste0(collection_year, collection_month, apiary),
-            flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower"),
+            flower_or_colony = ifelse(grepl("Sentinel|Colonies", Project), "from colony", "from flower"),
             CompGroupForC = paste0(collection_year, flower_or_colony),
             ColonyTransDateCompGroup = paste0(CompGroupForC, " ", apiary, " ", ColonyTransDate)
             )
 Unconstrained_PCA_Bombus_t <- UnconstrainedTaxaPCAFiltered(physeq_t_Bombus, FilterBypass, "1", 1:20, "ColonyTransDate", "collection_year")
-Unconstrained_PCA_Bombus_t <- Unconstrained_PCA_Bombus_t + scale_colour_viridis_d(option = "turbo")
+Unconstrained_PCA_Bombus_t <- Unconstrained_PCA_Bombus_t
+
+colors_viridis <- viridis(7, option = "turbo")
+
+# Create the color palette for dates 0 to 6 and add black for date 7
+colors_manual <- c(colors_viridis, "grey")
+
+# Plot with scale_colour_manual()
+Unconstrained_PCA_Bombus_t <- Unconstrained_PCA_Bombus_t + scale_colour_manual(values = colors_manual)
 
 ggsave(plot=Unconstrained_PCA_Bombus_t, paste0("FigR19", ".pdf"), dpi=300, width=36, height=24, units = "cm")
 ggsave(plot=Unconstrained_PCA_Bombus_t, paste0("FigR19", ".png"), dpi=300, width=36, height=24, units = "cm")
@@ -651,7 +681,6 @@ ggsave(plot=last_plot(), paste0("FigR17", ".pdf"), dpi=300, width=36, height=24,
 ggsave(plot=last_plot(), paste0("FigR17", ".png"), dpi=300, width=36, height=24, units = "cm")
 
 #####
-month_shapes <- c("May" = 0, "June" = 1, "July" = 2, "August" = 3, "September" = 4, "October" = 5, "November" = 6)
 
 RDS_month <- physeq %>%
       ps_mutate(
@@ -673,47 +702,34 @@ RDS_month <- physeq %>%
             "Oct",
             "Nov"
             )) %>%
-      ord_plot(plot_taxa = 1:5, color = "genus", size = 3, alpha = 0.8, shape = "collection_month", 
+      ord_plot(plot_taxa = 1:5, color = "collection_month", size = 3, alpha = 0.8, shape = "genus", 
             tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
-      stat_ellipse(aes(colour = collection_month), linewidth = 0.75) +
-scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "May" = Paired_pal[3], "June" = Paired_pal[4], "July" = Paired_pal[5], "August" = Paired_pal[7], "September" = Paired_pal[8], "October" = Paired_pal[9], "November" = Paired_pal[10])) +
-scale_shape_manual(values = month_shapes)
+scale_color_manual(values = c("May" = Paired_pal[3], "June" = Paired_pal[4], "July" = Paired_pal[5], "August" = Paired_pal[7], "September" = Paired_pal[8], "October" = Paired_pal[9], "November" = Paired_pal[10])) +
+scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
 
 RDS_apiary <- physeq %>%
       ps_mutate(
             s_Crosby = as.numeric(apiary == "Crosby"),
             s_Golf = as.numeric(apiary == "Golf"),
             s_Vet = as.numeric(apiary == "Vet"),
-            s_Colony3237 = as.numeric(apiary == "Colony3237"),
-            s_Colony34 = as.numeric(apiary == "Colony34"),
-            s_CoonRapids = as.numeric(apiary == "CoonRapids"),
-            s_CoonRapids1 = as.numeric(apiary == "CoonRapids1"),
-            s_Eagan = as.numeric(apiary == "Eagan"),
-            s_Woodbury = as.numeric(apiary == "Woodbury"),
-            flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower")
+            flower_or_colony = ifelse(grepl("Sentinel|Colonies", Project), "from colony", "from flower")
             ) %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
       ord_calc(method="RDA", constraints = c(
             "s_Crosby",
             "s_Golf",
-            "s_Vet",
-            "s_Colony3237",
-            "s_Colony34",
-            "s_CoonRapids",
-            "s_CoonRapids1",
-            "s_Eagan",
-            "s_Woodbury"
+            "s_Vet"
             )) %>%
-      ord_plot(plot_taxa = 1:5, color = "genus", size = 3, alpha = 0.8,
+      ord_plot(plot_taxa = 1:5, shape = "genus", color = "apiary", size = 3, alpha = 0.8,
             tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
-      stat_ellipse(aes(colour = apiary), linewidth = 0.75) +
-scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "Crosby" = Paired_pal[3], "Golf" = Paired_pal[4], "Vet" = Paired_pal[5], "Colony3237" = Paired_pal[7], "Colony34" = Paired_pal[8], "CoonRapids" = Paired_pal[9], "CoonRapids1" = Paired_pal[10], "Eagan" = Paired_pal[11], "Woodbury" = Paired_pal[12]))
+scale_color_manual(values = c("Crosby" = Paired_pal[3], "Golf" = Paired_pal[4], "Vet" = Paired_pal[5])) +
+scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
 
 RDS_distance <- physeq %>%
       ps_mutate(
@@ -729,16 +745,20 @@ RDS_distance <- physeq %>%
             "d_1500",
             "d_Colony"
             )) %>%
-      ord_plot(plot_taxa = 1:5, color = "genus", size = 3, alpha = 0.8, shape = "distance",
+      ord_plot(plot_taxa = 1:5, shape = "genus", size = 3, alpha = 0.8, color = "distance",
             tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
-      stat_ellipse(aes(colour = distance), linewidth = 0.75) +
-scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2], "100" = Paired_pal[3], "500" = Paired_pal[4], "1500" = Paired_pal[5], "Colony" = Paired_pal[7]))
+scale_color_manual(values = c("100" = Paired_pal[3], "500" = Paired_pal[4], "1500" = Paired_pal[5], "Colony" = Paired_pal[7])) +
+scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
+
+
+valid_genera <- c("Solidago", "Agastache", "Lotus", "Monarda", "Trifolium", "Calamintha", "Cirsium", "Dalea", "Eutrochium", "Chamaecrista")
 
 RDS_flower <- physeq %>%
-      ps_filter(distance != "Colony") %>%
+      ps_filter(collection_year != "2021") %>%
+      ps_filter(!grepl("Sentinel|Colonies", Project)) %>%
       ps_mutate(
             Solidago = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Solidago")),
             Agastache = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Agastache")),
@@ -749,7 +769,8 @@ RDS_flower <- physeq %>%
             Cirsium = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Cirsium")),
             Dalea = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Dalea")),
             Eutrochium = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Eutrochium")),
-            Chamaecrista = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Chamaecrista"))
+            Chamaecrista = ifelse(is.na(flower_genus), 0, as.numeric(flower_genus == "Chamaecrista")),
+            flower_genus = gsub(paste0("^((?!(?:", paste(valid_genera, collapse="|"), ")).)*$"), "Other", flower_genus, perl=TRUE)
             ) %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
       ord_calc(method="RDA", constraints = c(
@@ -764,24 +785,25 @@ RDS_flower <- physeq %>%
             "Eutrochium",
             "Chamaecrista"
             )) %>%
-      ord_plot(plot_taxa = FALSE, color = "genus", size = 3, alpha = 0.8,
+      ord_plot(plot_taxa = 1:10, color = "flower_genus", shape = "genus", size = 3, alpha = 0.8,
             tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
             tax_vec_style_all  = vec_tax_all(colour = "red"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
             constraint_vec_style  = vec_constraint(colour = "black")) +
       theme(aspect.ratio = 1) +
-      scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+      scale_color_brewer(palette = "Paired") +
+      scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
 
 
 cowplot::plot_grid(RDS_year, RDS_month, labels = c('A','B'))
 
-ggsave(plot=last_plot(), paste0("FigR14", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR14", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR14", ".pdf"), dpi=300, width = 48, height = 18, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR14", ".png"), dpi=300, width = 48, height = 18, units = "cm")
 
 cowplot::plot_grid(RDS_apiary, RDS_distance, RDS_flower, labels = c('A','B','C'))
 
-ggsave(plot=last_plot(), paste0("FigR15", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR15", ".png"), dpi=300, scale=2, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR15", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR15", ".png"), dpi=300, width = 36, height = 24, units = "cm")
 
 ##############################################################################
 ### Permanova via adonsi2
@@ -828,11 +850,11 @@ CompoPlot <- function(INPUT, GROUP_BY, FILTER_VAR, TAXLEV, MERGE, PALETTE) {
       ps_filter(genus == FILTER_VAR) %>%
       ps_mutate(
             season = recode(collection_month, May = "Spring", June = "Summer", July = "Summer", August = "Summer", September = "Autumn", October = "Autumn", November = "Autumn"),
-            ColonyTransDate = gsub(".*_(date[0-9]+$)", "\\1", sample_info1),
+            ColonyTransDate = paste(sample_info1, "_", sample_info3),
             ColonyTransDate = gsub("^(?!.*date[0-9]+$).*$", "Not_transplanted", ColonyTransDate, perl = TRUE),
-            ColonyTransDate = recode(ColonyTransDate, date0 = "w_0", date1 = "w_1", date2 = "w_2", date3 = "w_3", date4 = "w_4", date5 = "w_5", date6 = "w_6"),
+            ColonyTransDate = ifelse(is.na(ColonyTransDate), "Not_transplanted", ColonyTransDate),
             CompGroup = paste0(collection_year, collection_month, apiary),
-            flower_or_colony = ifelse(grepl("Colony", distance), "from colony", "from flower"),
+            flower_or_colony = ifelse(grepl("Sentinel|Colonies", Project), "from colony", "from flower"),
             CompGroupForC = paste0(collection_year, flower_or_colony),
             ColonyTransDateCompGroup = paste0(CompGroupForC, " ", apiary, " ", ColonyTransDate)
             ) %>%
@@ -941,13 +963,7 @@ ReShapeCorrel <- function() {
   ps_mutate(
       Apis = if_else(genus == "Apis", true = 1, false = 0),
       Bombus = if_else(genus == "Bombus", true = 1, false = 0),
-      bimaculatus = if_else(species == "bimaculatus", true = 1, false = 0),
-      citrinus = if_else(species == "citrinus", true = 1, false = 0),
-      griseocollis = if_else(species == "griseocollis", true = 1, false = 0),
-      impatiens = if_else(species == "impatiens", true = 1, false = 0),
-      rufocinctus = if_else(species == "rufocinctus", true = 1, false = 0),
-      vagans = if_else(species == "vagans", true = 1, false = 0),
-    Colony = if_else(distance == "Colony", true = 1, false = 0),
+    Colony = if_else(grepl("Sentinel|Colonies", Project), true = 1, false = 0),
     d_100 = if_else(distance == "100", true = 1, false = 0),
     d_500 = if_else(distance == "500", true = 1, false = 0),
     d_1500 = if_else(distance == "1500", true = 1, false = 0),
@@ -1062,14 +1078,6 @@ correlhm_genus <- DrawCorHeatmap(psq_many, c("Apis",
       "Bombus"
       ))
 
-correlhmB_species <- DrawCorHeatmap(psq_many_Bombus, c( 
-      "bimaculatus", 
-      "citrinus", # remove for plant viruses
-      "griseocollis", 
-      "impatiens", 
-      "rufocinctus", 
-      "vagans"))
-
 correlhmA_year <- DrawCorHeatmap(psq_many_Apis, c("y_2021", "y_2022", "y_2023"))
 correlhmA_month <- DrawCorHeatmap(psq_many_Apis, c("May", "June", "July", "August", "September", "October", "November"))
 
@@ -1162,11 +1170,11 @@ dev.off()
 
 
 
-png(paste0("FigR8", ".png"), width=36, height=16, res=300, unit="cm")
-cowplot::plot_grid(correlhm_genus, correlhmB_species, labels=c("A", "B"))
+png(paste0("FigR8", ".png"), width=18, height=16, res=300, unit="cm")
+correlhm_genus
 dev.off()
-pdf(paste0("FigR8", ".pdf"), width=14, height=6)
-cowplot::plot_grid(correlhm_genus, correlhmB_species, labels=c("A", "B"))
+pdf(paste0("FigR8", ".pdf"), width=7, height=6)
+correlhm_genus
 dev.off()
 
 png(paste0("FigR9", ".png"), width=36, height=32, res=300, unit="cm")
