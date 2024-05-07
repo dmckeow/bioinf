@@ -811,7 +811,16 @@ ggsave(plot=last_plot(), paste0("FigR15", ".png"), dpi=300, width = 36, height =
 dfmd_PAN <- dfmd[dfmd$Sample_metadata_code %in% rownames(t(taxa_obj_CSS_PCA)), ] %>%
       select(-seqrun, -real_analyses_name, -specific_read_source) %>%
       distinct()
-permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_month * apiary * distance, data = dfmd_PAN, method="bray", na.rm = TRUE)
+
+## collapse the flowers
+dfmd_PAN <- dfmd_PAN %>%
+      mutate(
+            flower_genus = gsub(paste0("^((?!(?:", paste(valid_genera, collapse="|"), ")).)*$"), "Other", flower_genus, perl=TRUE),
+            flower_genus = ifelse(is.na(flower_genus), "Other", flower_genus),
+            flower_genus = ifelse(collection_year == 2021, "flowers2021", flower_genus)
+            )
+
+permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_month * apiary * distance * flower_genus, data = dfmd_PAN, method="bray", na.rm = TRUE)
 
 write.table(permanova, "permanova.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
 
@@ -1078,6 +1087,13 @@ correlhm_genus <- DrawCorHeatmap(psq_many, c("Apis",
       "Bombus"
       ))
 
+png(paste0("FigR8", ".png"), width=18, height=16, res=300, unit="cm")
+correlhm_genus
+dev.off()
+pdf(paste0("FigR8", ".pdf"), width=7, height=6)
+correlhm_genus
+dev.off()
+
 correlhmA_year <- DrawCorHeatmap(psq_many_Apis, c("y_2021", "y_2022", "y_2023"))
 correlhmA_month <- DrawCorHeatmap(psq_many_Apis, c("May", "June", "July", "August", "September", "October", "November"))
 
@@ -1090,7 +1106,9 @@ correlhmB_apiary <- DrawCorHeatmap(psq_many_Bombus, c("Crosby", "Golf", "Vet", "
 correlhmA_distance <- DrawCorHeatmap(psq_many_Apis, c("d_100", "d_500", "d_1500"))
 correlhmB_distance <- DrawCorHeatmap(psq_many_Bombus, c("d_100", "d_500", "d_1500"))
 
-correlhmA_flowers <- DrawCorHeatmap(psq_many_Apis, c(
+correlhmA_flowers <- psq_many_Apis %>% 
+                        ps_filter(collection_year != "2021") %>%
+                        DrawCorHeatmap(., c(
       "Agastache",
       "Arctium",
       "Asclepias",
@@ -1115,7 +1133,9 @@ correlhmA_flowers <- DrawCorHeatmap(psq_many_Apis, c(
       "Trifolium"
 ))
 
-correlhmB_flowers <- DrawCorHeatmap(psq_many_Bombus, c(
+correlhmB_flowers <- psq_many_Bombus %>% 
+                        ps_filter(collection_year != "2021") %>%
+                        DrawCorHeatmap(., c(
 "Agastache",
 "Allium",
 "Asclepias",
@@ -1124,7 +1144,7 @@ correlhmB_flowers <- DrawCorHeatmap(psq_many_Bombus, c(
 "Cirsium",
 "Dalea",
 "Eutrochium",
-"Helianthus",
+#"Helianthus", # 2021 only
 "Heliopsis",
 "Liatris",
 "Lotus",
@@ -1132,14 +1152,14 @@ correlhmB_flowers <- DrawCorHeatmap(psq_many_Bombus, c(
 "Melilotus",
 "Monarda",
 "Nepeta",
-"Persicaria",
+#"Persicaria", # 2021 only
 "Pycnanthemum",
 "Rudbeckia",
 "Securigera",
 "Silphium",
 "Solidago",
 "Sonchus",
-"Symphyotrichum", # not in plant viruses
+#"Symphyotrichum", # not in plant viruses, only in 2021
 "Trifolium"
       ))
 
@@ -1169,13 +1189,6 @@ ncol = 3, nrow = 2)
 dev.off()
 
 
-
-png(paste0("FigR8", ".png"), width=18, height=16, res=300, unit="cm")
-correlhm_genus
-dev.off()
-pdf(paste0("FigR8", ".pdf"), width=7, height=6)
-correlhm_genus
-dev.off()
 
 png(paste0("FigR9", ".png"), width=36, height=32, res=300, unit="cm")
 cowplot::plot_grid(correlhmA_year, correlhmB_year, correlhmA_month, correlhmB_month, labels=c("A", "B", "C", "D"))
@@ -1278,6 +1291,9 @@ CoverageDepths <- CoverageDepths %>%
       left_join(dfContigsUniqByConTaxa, by='contig') %>%
       left_join(dfmd, by=c('ReadSource'='specific_read_source'))
 
+CoverageDepths <- CoverageDepths %>%
+      HostFilter()
+
 ### Reshape data by gathering data to make coverage a category
 
 CoverageDepths <- gather(CoverageDepths, key = "cov_category", value = "percent_of_contig_len_with_over_nX_coverage", percent_of_contig_len_with_over_5X_coverage, percent_of_contig_len_with_over_10X_coverage, percent_of_contig_len_with_over_100X_coverage)
@@ -1326,8 +1342,8 @@ CoverageDepths_filt <- CoverageDepths %>%
       filter(Length > 1000) %>%
       filter(grepl('NO', WasContigRemovedByDerep)) %>% 
       select(-percent_of_contig_len_with_over_nX_coverage, -cov_category, -total_bases_over_5_coverage, -total_bases_over_10_coverage, -total_bases_over_100_coverage) %>%
-      distinct() #%>%
-      #filter(!grepl('Chronic bee|Cripavirus|Aparavirus|partiti-like|permutotetra|rhabdovirus|Agassiz|Mayfield|Loch|hasma-related|interruptus|picorna-like|Lake Sinai virus 3|Lake Sinai virus 6|Lake Sinai virus 1|virus Reo1|Unclassified sinaivirus|mosaic virus|Peanut|potexvirus|seed borne|betaflexiviridae|Apple|Prunus|mottle virus|Nepovirus|Turnip|Comovirus|comovirus', RepresentativeName))
+      distinct() %>%
+      filter(!grepl('Chronic bee|Cripavirus|Aparavirus|partiti-like|permutotetra|rhabdovirus|Agassiz|Mayfield|Loch|hasma-related|interruptus|picorna-like|Lake Sinai virus 3|Lake Sinai virus 6|Lake Sinai virus 1|virus Reo1|Unclassified sinaivirus|mosaic virus|Peanut|potexvirus|seed borne|betaflexiviridae|Apple|Prunus|mottle virus|Nepovirus|Turnip|Comovirus|comovirus', RepresentativeName))
 
 CoverageDepths_filt$Length <- as.numeric(CoverageDepths_filt$Length)
 
