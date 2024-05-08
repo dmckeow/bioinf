@@ -11,6 +11,7 @@ library(Biostrings)
 library(igraph)
 library(RColorBrewer)
 library(ggraph)
+library(qgraph)
 
 # Import data
 ref.metadata <- read_sheet("https://docs.google.com/spreadsheets/d/14BDmFgMYqHksvIRgdRG_jLISXi7MqqAoBVyAn96cm8g/edit#gid=1598046758")
@@ -23,13 +24,19 @@ FilterMD <- function(x) {
 
 HostFilter <- function(data){
       data %>%
-      filter(genus == "Apis" | (genus == "Bombus" & species == "impatiens"))
+      filter((genus == "Apis" | (genus == "Bombus" & species == "impatiens") | Project != "Current_study"))
 }
+
+HostFilter_nw <- function(data){
+  data %>%
+    filter((genus.x == "Apis" | (genus.x == "Bombus" & species.x == "impatiens") | Project.x != "Current_study") &
+           (genus.y == "Apis" | (genus.y == "Bombus" & species.y == "impatiens") | Project.y != "Current_study"))
+}
+
 
 ref.metadata <- FilterMD(ref.metadata)
 ref.metadata$tip.name <- paste(ref.metadata$RepresentativeName,ref.metadata$contig)
 
-sam.metadata <- HostFilter(sam.metadata)
 sam.metadata <- FilterMD(sam.metadata)
 sam.metadata$tip.name <- NA
 
@@ -126,26 +133,9 @@ PrepForCytoscape <- function() {
 
 PrepMetadata()
 
-################# run as loop ove all matrices available
-
-#file_list <- list.files(path = "fastANI/", pattern="Apis_rhabdovirus.*.matrix", full.names=TRUE, recursive=FALSE)
-
-#for (file in file_list) {
-#	output_name <- gsub("fastANI/|\\.matrix", "", file)
-#ReadMatrix(file)
-
-# 	png(paste0(output_name, ".network", ".png"), width=800, height=800, res=300, unit="px")
-# 	PlotNetwork(ref.sam.metadata.sample$genus)
- #	dev.off()
-
- #	pdf(paste0(output_name, ".network", ".pdf"), width=8, height=8)
- #	PlotNetwork(ref.sam.metadata.sample$genus)
- #	dev.off()
-#}
-
-
-
+############################################################################################################
 ################ OR jsut prep input files for cytoscape
+
 file_list <- list.files(path = "fastANI/", pattern="*.NoMmseqs.matrix", full.names=TRUE, recursive=FALSE)
 
 for (file in file_list) {
@@ -171,9 +161,13 @@ for (file in file_list) {
   concatenated_data <- rbind(concatenated_data, data)
 }
 
+concatenated_data <- HostFilter(concatenated_data)
+
 # Write the concatenated data to a new CSV file
 write.table(concatenated_data, "All.NoMmseqs.metadata.cytoscape.tsv", row.names = FALSE, quote = FALSE, sep = "\t")
 
+#################################################################
+#################################################################
 
 file.remove("All.NoMmseqs.network.cytoscape.tsv")
 file_list <- list.files(pattern="*.NoMmseqs.network.cytoscape.tsv", full.names=TRUE, recursive=FALSE)
@@ -181,16 +175,22 @@ file_list <- list.files(pattern="*.NoMmseqs.network.cytoscape.tsv", full.names=T
 file_list <- file_list[ !grepl("Dicistroviridae.NoMmseqs..*|Iflaviridae_Iflavirus.NoMmseqs..*", file_list) ]
 
 # Initialize an empty dataframe to store concatenated data
-concatenated_data <- data.frame()
+concatenated_data_nw <- data.frame()
 
 # Loop through each file, read it, and concatenate it to the dataframe
 for (file in file_list) {
   data <- read.table(file, header = TRUE, sep = "\t") # Adjust header argument based on your data
-  concatenated_data <- rbind(concatenated_data, data)
+  concatenated_data_nw <- rbind(concatenated_data_nw, data)
 }
 
+concatenated_data_nw <- concatenated_data_nw %>%
+		left_join(ref.sam.metadata, by = c('from' = 'contig')) %>%
+		left_join(ref.sam.metadata, by = c('to' = 'contig'))
+
+concatenated_data_nw <- HostFilter_nw(concatenated_data_nw) %>% select(from, to, weight)
+
 # Write the concatenated data to a new CSV file
-write.table(concatenated_data, "All.NoMmseqs.network.cytoscape.tsv", row.names = FALSE, quote = FALSE, sep = "\t")
+write.table(concatenated_data_nw, "All.NoMmseqs.network.cytoscape.tsv", row.names = FALSE, quote = FALSE, sep = "\t")
 
 ##############################################################################
 ############ prep the metadata for the protein blasts
@@ -199,26 +199,40 @@ file_list <- list.files(path = "iprscansplit/", pattern="*.blastp", full.names=T
 PrepForCytoscapeBlast <- function() {
 	blastp.ref.sam.metadata <<- blastp %>%
 		left_join(ref.sam.metadata, by = 'contig') %>%
+		HostFilter() %>%
 		select(-to, -pident, -length, -mismatch, -gapopen, -qstart, -qend, -sstart, -send, -evalue, -bitscore) %>%
 		distinct
+}
+
+PrepForCytoscapeBlast_nw <- function() {
+	blastp.ref.sam.nw <<- blastp %>%
+		left_join(ref.sam.metadata, by = c('contig_from' = 'contig')) %>%
+		left_join(ref.sam.metadata, by = c('contig_to' = 'contig')) %>%
+		HostFilter_nw() #%>%
+		#select(from, to, pident)
 }
 
 
 for (file in file_list) {
 	output_name <- gsub("iprscansplit/|\\.blastp", "", file)
-	blastp <- read.table(file, header = TRUE, sep = "\t") # Adjust header argument based on your data
+	blastp <- read.table(file, header = TRUE, sep = "\t")
 	blastp$contig <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$from)
 	PrepForCytoscapeBlast()
  	write.table(blastp.ref.sam.metadata, paste0(output_name, ".blastp.metadata.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
+
+ 	blastp$contig_from <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$from)
+ 	blastp$contig_to <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$to)
+ 	PrepForCytoscapeBlast_nw()
+ 	write.table(blastp.ref.sam.nw, paste0(output_name, ".blastp.network.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
 }
 
 
 
-########### plot with igraph
+########### plot with igraph, mostly works, but abandoned due to lack of way to label clusters
 
 
 
-PlotNetwork2 <- function(INPUT_DATA, METADATA, color_var, color_mapping) {
+PlotNetwork2 <- function(INPUT_DATA, METADATA, color_var, color_mapping, VERTEX_SIZE, LAYOUT_AREA_FACTOR, REPULSION_FACTOR, MAX_DISPLACE_FACTOR) {
 	set.seed(4)
 	network <- graph_from_data_frame(INPUT_DATA, vertices = METADATA)
 	isolated = which(degree(network)==0) ## get isolated vertices
@@ -255,24 +269,45 @@ PlotNetwork2 <- function(INPUT_DATA, METADATA, color_var, color_mapping) {
     # Assign colors to vertices based on their category
     V(network)$color <- color_mapping[metadata_kept[[color_var]]]
 
+ 	
+e <- as_edgelist(network,names=FALSE)
+#layout <- qgraph.layout.fruchtermanreingold(e,vcount=vcount(network))
+
+layout <- qgraph.layout.fruchtermanreingold(
+	e,
+	vcount=vcount(network),
+  area=LAYOUT_AREA_FACTOR*(vcount(network)^2),
+  repulse.rad=(vcount(network)^REPULSION_FACTOR),
+  max.delta = (vcount(network))/MAX_DISPLACE_FACTOR
+  ) # 8, 3.1 looked ok
+
+  #layout <- layout_with_fr(network)
+  #layout <- norm_coords(layout, ymin=-1, ymax=1, xmin=-1, xmax=1)*2
+
+
 	plot.igraph(network, 
-    	vertex.size=4,
+    	vertex.size=VERTEX_SIZE,
     	vertex.label=NA,
     	vertex.frame.color="black",
     	edge.width=1,
-    	edge.arrow.size = 0
+    	edge.arrow.size = 0,
+    	margin = 0,
+    	layout=layout,
+    	#rescale=FALSE
     	)
-	legend("bottomleft", 
+
+	legend("topleft", 
       	 legend=paste(levels(as.factor(metadata_kept[[color_var]])), sep=""), 
       	 col = color_mapping, 
       	 #col = palette_net, 
       	 bty = "n", pch=20 , pt.cex = 1, cex = 0.5,
       	 text.col="black" , horiz = F)
+	return(network)
     }
 
 
 ### make a palette manually
-palette_genus_project <- c("#E31A1C", "#FB9A99", "#B2DF8A", "#1F78B4", "#A6CEE3")
+palette_genus_project <- c("#BB0D0E", "#FB9A99", "#B2DF8A", "#1F78B4", "#A6CEE3")
 names(palette_genus_project) <- c("Apis_Current_study", "Apis_NCBI", "Other_NCBI", "Bombus_Current_study", "Bombus_NCBI")
 
 
@@ -286,17 +321,22 @@ all_RdRp.blastp_md <- read.csv("all_RdRp.blastp.metadata.cytoscape.tsv", header=
 
 all_RdRp.blastp_md$genus_project <- paste(all_RdRp.blastp_md$genus, all_RdRp.blastp_md$Project, sep = "_")
 
+## nrows, ncols
+#par(mfrow=c(1, 2))
 
-#### filter to reduce data for testing
-all_RdRp.blastp_md_test <- all_RdRp.blastp_md %>%
-    filter(str_detect(RepresentativeName, "Iflavirus aladeformis"))
+#VIRUS = "Iflavirus aladeformis"
+#all_RdRp.blastp_md_test <- all_RdRp.blastp_md %>% filter(str_detect(RepresentativeName, VIRUS))
+#all_RdRp.blastp_test <- all_RdRp.blastp %>% filter(from %in% all_RdRp.blastp_md_test$from & to %in% all_RdRp.blastp_md_test$from)
+#network <- PlotNetwork2(all_RdRp.blastp_test, all_RdRp.blastp_md_test, "genus_project", palette_genus_project)
 
-# Filter based on condition
-all_RdRp.blastp_test <- all_RdRp.blastp %>%
-  filter(from %in% all_RdRp.blastp_md_test$from & to %in% all_RdRp.blastp_md_test$from)
+#par(mfrow=c(1, 1))
 
+network <- PlotNetwork2(all_RdRp.blastp, all_RdRp.blastp_md, "genus_project", palette_genus_project, 1.5, 5, 2.7, 5)
 
+png(paste0("test_network", ".png"), width=48, height=48, res=300, unit="cm")
+network <- PlotNetwork2(all_RdRp.blastp, all_RdRp.blastp_md, "genus_project", palette_genus_project)
+dev.off()
+pdf(paste0("test_network", ".pdf"), width=7, height=6)
+network <- PlotNetwork2(all_RdRp.blastp, all_RdRp.blastp_md, "genus_project", palette_genus_project)
 
-
-####### plot it
-PlotNetwork2(all_RdRp.blastp_test, all_RdRp.blastp_md_test, "genus_project", palette_genus_project)
+dev.off()
