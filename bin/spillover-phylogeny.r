@@ -35,6 +35,11 @@ FilterMD <- function(x) {
     x %>% select(contig, sample_info1, sample_info2, sample_info3, SuperBin, RepresentativeName, contig_length, miuvig_quality, Project, Sample_metadata_code, BioRep, genus, species, collection_month, collection_year, apiary, distance, flower_genus, flower_species, num_of_bees)
 }
 
+HostFilter <- function(data){
+      data %>%
+      filter(genus == "Bombus" & species != "impatiens" & Project == "Current_study")
+}
+
 ref.metadata <- FilterMD(ref.metadata)
 sam.metadata <- FilterMD(sam.metadata)
 
@@ -51,7 +56,7 @@ ref.sam.metadata$contig_length <<- as.numeric(ref.sam.metadata$contig_length)
 ref.sam.metadata$genus <<- ifelse(is.na(ref.sam.metadata$genus) | (ref.sam.metadata$genus != "Apis" & ref.sam.metadata$genus != "Bombus"), "Other", ref.sam.metadata$genus)
 ref.sam.metadata$genus <<- ifelse(is.na(ref.sam.metadata$genus), "Other", ref.sam.metadata$genus)
 ref.sam.metadata$Project <<- gsub("GenBank","NCBI",ref.sam.metadata$Project)
-ref.sam.metadata$Project <<- ifelse(ref.sam.metadata$Project != "NCBI", "Current study", ref.sam.metadata$Project)
+ref.sam.metadata$Project <<- ifelse(ref.sam.metadata$Project != "NCBI", "Current_study", ref.sam.metadata$Project)
 ref.sam.metadata$Project <<- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref.sam.metadata$Project)
 
 # get names of sequences from fasta
@@ -66,6 +71,8 @@ ref.sam.metadata$Project <<- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref
         left_join(ref.sam.metadata, by='contig')
     ref.sam.metadata <<- deflines %>%
         left_join(ref.sam.metadata, by='contig')
+    ref.sam.metadata$genus_project <<- paste(ref.sam.metadata$genus, ref.sam.metadata$Project, sep = "_")
+
 
 # Read in tree
     phytree <<- read.tree(paste0(virus_name, tree_ext))
@@ -82,7 +89,7 @@ ref.sam.metadata$contig_length <<- as.numeric(ref.sam.metadata$contig_length)
 ref.sam.metadata$genus <<- ifelse(is.na(ref.sam.metadata$genus) | (ref.sam.metadata$genus != "Apis" & ref.sam.metadata$genus != "Bombus"), "Other", ref.sam.metadata$genus)
 ref.sam.metadata$genus <<- ifelse(is.na(ref.sam.metadata$genus), "Other", ref.sam.metadata$genus)
 ref.sam.metadata$Project <<- gsub("GenBank","NCBI",ref.sam.metadata$Project)
-ref.sam.metadata$Project <<- ifelse(ref.sam.metadata$Project != "NCBI", "Current study", ref.sam.metadata$Project)
+ref.sam.metadata$Project <<- ifelse(ref.sam.metadata$Project != "NCBI", "Current_study", ref.sam.metadata$Project)
 ref.sam.metadata$Project <<- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref.sam.metadata$Project)
 
 # get names of sequences from fasta
@@ -97,6 +104,8 @@ ref.sam.metadata$Project <<- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref
     ref.sam.metadata <<- deflines %>%
         left_join(ref.sam.metadata, by='contig')
     ref.sam.metadata$prot <<- gsub(":", "_", ref.sam.metadata$prot)
+
+    ref.sam.metadata$genus_project <<- paste(ref.sam.metadata$genus, ref.sam.metadata$Project, sep = "_")
 
 ref.sam.metadata$tip.name.prot <<- ref.sam.metadata$prot
 
@@ -114,10 +123,17 @@ DrawTree <- function(input_tree, LAYOUT, BRANCH) {
            na.rm=TRUE,
            open.angle = 180
     ) %<+% ref.sam.metadata +
-    scale_color_manual(values = c(Apis = '#e31a1c', Bombus = '#1f78b4', Other = 'black')) +
-     geom_tippoint(aes(color = genus, shape = Project), size = 3) +
+    
+scale_color_manual(values = c(
+    Apis_Current_study = '#BB0D0E',
+    Apis_NCBI = '#FB9A99',
+    Other_NCBI = '#B2DF8A',
+    Bombus_Current_study = '#1F78B4',
+    Bombus_NCBI = '#A6CEE3')) +
+
+     geom_tippoint(aes(color = genus_project), size = 3) +
      geom_treescale() +
-     scale_shape_manual(values = c(`Current study`= 16, NCBI = 10, Other = 10), na.value = 16) +
+     scale_shape_manual(values = c(`Current_study`= 16, NCBI = 10, Other = 10), na.value = 16) +
      geom_text2(aes(label=label,  # add the bootstrap values
             subset = !is.na(as.numeric(label)) & as.numeric(label) > 70),
             nudge_x = -0.01, nudge_y = 0.01, 
@@ -175,6 +191,9 @@ tree_ext <- ".contree"
 virus_name <- "Apis_rhabdovirus"
 output_name <- "Apis_rhabdovirus"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
+
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 
@@ -188,6 +207,8 @@ assign(output_name, output$p)
 virus_name <- "Dicistroviridae"
 output_name <- "Dicistroviridae"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 
 p <- DrawTree(phytree, "rectangular", "branch.length")
@@ -200,6 +221,8 @@ assign(output_name, output$p)
 virus_name <- "Dicistroviridae_Aparavirus"
 output_name <- "Dicistroviridae_Aparavirus"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 to_drop <- c("_R_29JAN24DM1___barcode66.contigs.fasta______tig00000096")
 phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
@@ -214,6 +237,8 @@ assign(output_name, output$p)
 virus_name <- "Dicistroviridae_Cripavirus"
 output_name <- "Dicistroviridae_Cripavirus"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -225,6 +250,8 @@ assign(output_name, output$p)
 virus_name <- "Dicistroviridae_Triatovirus"
 output_name <- "Dicistroviridae_Triatovirus"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -237,6 +264,8 @@ assign(output_name, output$p)
 virus_name <- "Iflaviridae_Iflavirus_aladeformis"
 output_name <- "Iflaviridae_Iflavirus_aladeformis"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -248,6 +277,8 @@ assign(output_name, output$p)
 virus_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1"
 output_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -259,6 +290,8 @@ assign(output_name, output$p)
 virus_name <- "Iflaviridae_Iflavirus_sacbroodi"
 output_name <- "Iflaviridae_Iflavirus_sacbroodi"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 to_drop <- c("26JAN24DM1___barcode54.contigs.fasta______tig00000104")
 phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
@@ -272,6 +305,8 @@ assign(output_name, output$p)
 virus_name <- "Negevirus_Negevirus_like"
 output_name <- "Negevirus_Negevirus_like"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -283,6 +318,8 @@ assign(output_name, output$p)
 virus_name <- "Partiti_like"
 output_name <- "Partiti_like"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -294,6 +331,8 @@ assign(output_name, output$p)
 virus_name <- "Phasmaviridae"
 output_name <- "Phasmaviridae"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -305,6 +344,8 @@ assign(output_name, output$p)
 virus_name <- "Picorna_like_Mayfield"
 output_name <- "Picorna_like_Mayfield"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -316,6 +357,8 @@ assign(output_name, output$p)
 virus_name <- "Reo_like"
 output_name <- "Reo_like"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 to_drop <- ref.sam.metadata$contigAln.x[ref.sam.metadata$RepresentativeName == "Phocid orthoreovirus 1"]
 phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
@@ -329,6 +372,8 @@ assign(output_name, output$p)
 virus_name <- "Sinaivirus"
 output_name <- "Sinaivirus"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -340,6 +385,8 @@ assign(output_name, output$p)
 virus_name <- "Virga_like"
 output_name <- "Virga_like"
 PrepMetaDataTreeDNA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(contigAln.x) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "contigAln.x", 0.05, 0.05)
@@ -382,7 +429,7 @@ ref.sam.metadata$contig_length <- as.numeric(ref.sam.metadata$contig_length)
 ref.sam.metadata$genus <- ifelse(is.na(ref.sam.metadata$genus) | (ref.sam.metadata$genus != "Apis" & ref.sam.metadata$genus != "Bombus"), "Other", ref.sam.metadata$genus)
 ref.sam.metadata$genus <- ifelse(is.na(ref.sam.metadata$genus), "Other", ref.sam.metadata$genus)
 ref.sam.metadata$Project <- gsub("GenBank","NCBI",ref.sam.metadata$Project)
-ref.sam.metadata$Project <- ifelse(ref.sam.metadata$Project != "NCBI", "Current study", ref.sam.metadata$Project)
+ref.sam.metadata$Project <- ifelse(ref.sam.metadata$Project != "NCBI", "Current_study", ref.sam.metadata$Project)
 ref.sam.metadata$Project <- ifelse(is.na(ref.sam.metadata$Project), "NCBI", ref.sam.metadata$Project)
 
 blastp$from_contig <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$from)
@@ -443,6 +490,8 @@ virus_name <- "Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196"
 output_name <- "Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196"
 
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -457,6 +506,8 @@ virus_name <- "Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946"
 output_name <- "Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946"
 
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -469,6 +520,8 @@ virus_name <- "Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Pfam__RNA_dependent_RNA_polymerase__PF00680"
 
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -481,6 +534,8 @@ virus_name <- "Pfam__RNA_dependent_RNA_polymerase__PF00978"
 output_name <- "Pfam__RNA_dependent_RNA_polymerase__PF00978"
 
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 p <- DrawTree(phytree, "circular", "branch.length")
 phytree <- phangorn::midpoint(phytree)
@@ -493,6 +548,8 @@ virus_name <- "Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998"
 output_name <- "Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998"
 
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 to_drop <- c("MW676134.1_2_40-305")
 phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
@@ -518,6 +575,8 @@ assign(output_name, output$p)
 virus_name <- "Apis_rhabdovirus__Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946"
 output_name <- "Apis_rhabdovirus__Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -529,6 +588,8 @@ assign(output_name, output$p)
 virus_name <- "Dicistroviridae_Aparavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Dicistroviridae_Aparavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 to_drop <- c("29JAN24DM1___barcode66.contigs.fasta______tig00000096_3_16-491", "29JAN24DM1___barcode66.contigs.fasta______tig00000096_1_14-127")
 phytree <- drop.tip(phytree, to_drop)
@@ -542,6 +603,8 @@ assign(output_name, output$p)
 virus_name <- "Dicistroviridae_Cripavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Dicistroviridae_Cripavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -554,6 +617,8 @@ assign(output_name, output$p)
 virus_name <- "Dicistroviridae_Triatovirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Dicistroviridae_Triatovirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -566,6 +631,8 @@ assign(output_name, output$p)
 virus_name <- "Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -576,6 +643,8 @@ assign(output_name, output$p)
 virus_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -587,6 +656,8 @@ assign(output_name, output$p)
 virus_name <- "Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -599,6 +670,8 @@ assign(output_name, output$p)
 virus_name <- "Negevirus_Negevirus_like__Pfam__RNA_dependent_RNA_polymerase__PF00978"
 output_name <- "Negevirus_Negevirus_like__Pfam__RNA_dependent_RNA_polymerase__PF00978"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -611,6 +684,8 @@ assign(output_name, output$p)
 virus_name <- "Partiti_like__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Partiti_like__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -621,6 +696,8 @@ assign(output_name, output$p)
 virus_name <- "Phasmaviridae__Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196"
 output_name <- "Phasmaviridae__Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -631,6 +708,8 @@ assign(output_name, output$p)
 virus_name <- "Picorna_like_Mayfield__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 output_name <- "Picorna_like_Mayfield__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -641,6 +720,8 @@ assign(output_name, output$p)
 virus_name <- "Sinaivirus__Pfam__RNA_dependent_RNA_polymerase__PF00978"
 output_name <- "Sinaivirus__Pfam__RNA_dependent_RNA_polymerase__PF00978"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -651,6 +732,8 @@ assign(output_name, output$p)
 virus_name <- "Sinaivirus__Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998"
 output_name <- "Sinaivirus__Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 to_drop <- c("MW676134.1_2_40-305")
 phytree <- drop.tip(phytree, to_drop)
@@ -663,6 +746,8 @@ assign(output_name, output$p)
 virus_name <- "Virga_like__Pfam__RNA_dependent_RNA_polymerase__PF00978"
 output_name <- "Virga_like__Pfam__RNA_dependent_RNA_polymerase__PF00978"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
@@ -707,11 +792,16 @@ dev.off()
 virus_name <- "all_RdRp"
 output_name <- "all_RdRp"
 PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 to_drop <- c("29JAN24DM1___barcode66.contigs.fasta______tig00000096_3_16-491",
     "29JAN24DM1___barcode66.contigs.fasta______tig00000096_1_14-127",
     "29JAN24DM1___barcode66.contigs.fasta______tig00000070_1_13-70")
 phytree <- drop.tip(phytree, to_drop)
 phytree <- drop.tip(phytree, non_representatives_vector)
+
+to_drop <- ref.sam.metadata[ref.sam.metadata$RepresentativeName == "Phocid orthoreovirus 1", ] %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 
 
 ### change some taxa names for color plotting
@@ -734,7 +824,7 @@ ref.sam.metadata$RepresentativeName <- gsub(".*nege-like.*|Wallerfield.*", "Nege
 phytree <- phangorn::midpoint(phytree)
 
 p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(p, c("SuperBin"), "prot", 0.05, 0.5)
+output <- TreeHeatmap(p, c("SuperBin"), "prot", 0.05, 0.2)
 output$p <- output$p + scale_fill_brewer(palette = "Set3")
 output$p <- output$p + new_scale_fill()
 

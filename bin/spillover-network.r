@@ -163,6 +163,8 @@ for (file in file_list) {
 
 concatenated_data <- HostFilter(concatenated_data)
 
+concatenated_data$genus_project <- paste(concatenated_data$genus, concatenated_data$Project, sep = "_")
+
 # Write the concatenated data to a new CSV file
 write.table(concatenated_data, "All.NoMmseqs.metadata.cytoscape.tsv", row.names = FALSE, quote = FALSE, sep = "\t")
 
@@ -218,6 +220,7 @@ for (file in file_list) {
 	blastp <- read.table(file, header = TRUE, sep = "\t")
 	blastp$contig <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$from)
 	PrepForCytoscapeBlast()
+	blastp.ref.sam.metadata$genus_project <- paste(blastp.ref.sam.metadata$genus, blastp.ref.sam.metadata$Project, sep = "_")
  	write.table(blastp.ref.sam.metadata, paste0(output_name, ".blastp.metadata.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
 
  	blastp$contig_from <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$from)
