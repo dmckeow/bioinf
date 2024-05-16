@@ -1,3 +1,5 @@
+#!/bin/bash
+
 conda activate medaka
 
 
