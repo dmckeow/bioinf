@@ -2,7 +2,7 @@
 
 conda activate medaka
 
-
+#
 ## map reads vs ref
 ## already done in spillover-summarise2.sh - bams in:
 BAMS="/panfs/jay/groups/27/dcschroe/dmckeow/data/Spillover_FINAL/tmp.mapping.self"
