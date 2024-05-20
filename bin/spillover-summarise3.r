@@ -517,6 +517,28 @@ cowplot::plot_grid(Ord_main, Ord_main_yearlab, Ord_main_monthlab, Ord_main_dist,
 ggsave(plot=last_plot(), paste0("FigR4", ".pdf"), dpi=300, scale=2, units = "cm")
 ggsave(plot=last_plot(), paste0("FigR4", ".png"), dpi=300, scale=2, units = "cm")
 
+RenameTaxa <- function(x) {
+  x <- gsub("([0-9])", " \\1", x)  # Inserting a space before every number
+  toupper(gsub("\\b([[:alnum:]-]{1})[[:alnum:]-]*\\s*", "\\1", x))
+}
+
+df <- physeq@tax_table %>% 
+      as.data.frame() %>%
+      select(RepresentativeName) %>%
+      RenameTaxa()
+
+
+# Extract the comma-separated values
+values <- strsplit(df, ",")[[1]]
+
+# Remove the C(' and ')
+values <- gsub("C\\(|'|\\)", "", values)
+
+# Print each value on a new line
+cat(values, sep = "\n")
+
+
+
 
  PCA_main_taxa <- physeq %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
@@ -526,16 +548,18 @@ ggsave(plot=last_plot(), paste0("FigR4", ".png"), dpi=300, scale=2, units = "cm"
             plot_taxa = TRUE,
             color = "genus",
             size = 2, alpha = 0.8,
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 5),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
-            constraint_vec_style  = vec_constraint(colour = "black")) +
+            constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa
+            ) +
       theme(aspect.ratio = 1) +
       scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
 
-cowplot::plot_grid(Ord_main, PCA_main_taxa, labels = c('A', 'B'))
-ggsave(plot=last_plot(), paste0("FigR3", ".pdf"), dpi=300, scale=2, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR3", ".png"), dpi=300, scale=2, units = "cm")
+PCA_main_taxa
+ggsave(plot=last_plot(), paste0("FigR3", ".pdf"), dpi=300, width=24, height=24, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR3", ".png"), dpi=300, width=24, height=24, units = "cm")
 
 #### Redundancy plot to test what variables contributed to communtiy similarity
 
