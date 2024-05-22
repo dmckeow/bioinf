@@ -360,9 +360,7 @@ ggplot(aes(x=Sample_metadata_code, y=RepresentativeName, fill=CSSCountReadsMappe
 theme(axis.title.y = element_blank()) +
 theme(strip.placement = "outside") +
 theme(ggh4x.facet.nestline = element_line(colour = "black")) +
-labs(fill="# CSS norm. reads") +
-xlab("389 Apis mellifera samples, 117 Bombus impatiens samples") # Bombus impatiens only
-#xlab("389 Apis samples, 137 Bombus samples") # with all Bombus species
+labs(fill="# CSS norm. reads")
 
 ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
 ggsave(plot=taxa_obj_CSS_HM_p, paste0("FigR1", ".png"), dpi=300, width = 36, height = 24, units = "cm")
@@ -526,7 +524,9 @@ df <- physeq@tax_table %>%
       as.data.frame() %>%
       select(RepresentativeName) %>%
       RenameTaxa()
-
+df2 <- physeq@tax_table %>% 
+      as.data.frame() %>%
+      select(RepresentativeName)
 
 # Extract the comma-separated values
 values <- strsplit(df, ",")[[1]]
@@ -576,9 +576,10 @@ RDS_year <- physeq %>%
             "y_2023"
             )) %>%
       ord_plot(plot_taxa = 1:20, shape = "genus", size = 3, alpha = 0.8, color = "collection_year", 
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 5),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
-            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
       theme(aspect.ratio = 1) +
 scale_color_manual(values = c("2021" = Paired_pal[3], "2022" = Paired_pal[4], "2023" = Paired_pal[5]))
 
@@ -593,8 +594,9 @@ UnconstrainedTaxaPCAFiltered <- function(INPUT, FILTER_VAR, VAR, PLOT_TAXA, COLO
             color = COLOR_VAR,
             shape = SHAPE_VAR,
             size = 2, alpha = 0.8,
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 45, size = 2),
-            tax_vec_style_all  = vec_tax_all(colour = "grey30")) +
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 45, size = 5),
+            tax_vec_style_all  = vec_tax_all(colour = "grey30"),
+            taxon_renamer = RenameTaxa) +
       theme(aspect.ratio = 1)
 }
 
@@ -727,9 +729,10 @@ RDS_month <- physeq %>%
             "Nov"
             )) %>%
       ord_plot(plot_taxa = 1:5, color = "collection_month", size = 3, alpha = 0.8, shape = "genus", 
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 5),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
-            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
       theme(aspect.ratio = 1) +
 scale_color_manual(values = c("May" = Paired_pal[3], "June" = Paired_pal[4], "July" = Paired_pal[5], "August" = Paired_pal[7], "September" = Paired_pal[8], "October" = Paired_pal[9], "November" = Paired_pal[10])) +
 scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
@@ -748,9 +751,10 @@ RDS_apiary <- physeq %>%
             "s_Vet"
             )) %>%
       ord_plot(plot_taxa = 1:5, shape = "genus", color = "apiary", size = 3, alpha = 0.8,
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 5),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
-            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
       theme(aspect.ratio = 1) +
 scale_color_manual(values = c("Crosby" = Paired_pal[3], "Golf" = Paired_pal[4], "Vet" = Paired_pal[5])) +
 scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
@@ -770,9 +774,10 @@ RDS_distance <- physeq %>%
             "d_Colony"
             )) %>%
       ord_plot(plot_taxa = 1:5, shape = "genus", size = 3, alpha = 0.8, color = "distance",
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 5),
             tax_vec_style_all  = vec_tax_all(colour = "grey30"),
-            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black")) +
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3), constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
       theme(aspect.ratio = 1) +
 scale_color_manual(values = c("100" = Paired_pal[3], "500" = Paired_pal[4], "1500" = Paired_pal[5], "Colony" = Paired_pal[7])) +
 scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
@@ -810,10 +815,11 @@ RDS_flower <- physeq %>%
             "Chamaecrista"
             )) %>%
       ord_plot(plot_taxa = 1:10, color = "flower_genus", shape = "genus", size = 3, alpha = 0.8,
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 5),
             tax_vec_style_all  = vec_tax_all(colour = "red"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
-            constraint_vec_style  = vec_constraint(colour = "black")) +
+            constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
       theme(aspect.ratio = 1) +
       scale_color_brewer(palette = "Paired") +
       scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
@@ -824,10 +830,10 @@ cowplot::plot_grid(RDS_year, RDS_month, labels = c('A','B'))
 ggsave(plot=last_plot(), paste0("FigR14", ".pdf"), dpi=300, width = 48, height = 18, units = "cm")
 ggsave(plot=last_plot(), paste0("FigR14", ".png"), dpi=300, width = 48, height = 18, units = "cm")
 
-cowplot::plot_grid(RDS_apiary, RDS_distance, RDS_flower, labels = c('A','B','C'))
+RDS_apiary_RDS_distance_RDS_flower <- cowplot::plot_grid(RDS_apiary, RDS_distance, RDS_flower, labels = c('A','B','C'))
 
-ggsave(plot=last_plot(), paste0("FigR15", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR15", ".png"), dpi=300, width = 36, height = 24, units = "cm")
+ggsave(plot=RDS_apiary_RDS_distance_RDS_flower, paste0("FigR15", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
+ggsave(plot=RDS_apiary_RDS_distance_RDS_flower, paste0("FigR15", ".png"), dpi=300, width = 36, height = 24, units = "cm")
 
 ##############################################################################
 ### Permanova via adonsi2
@@ -849,24 +855,7 @@ permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_
 write.table(permanova, "permanova.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
 
 #### composition plot
-CompoPlot <- function(filter_var) {
-  physeq %>%
-  ps_filter(collection_year == filter_var) %>%
-  comp_barplot(
-    tax_level = "SuperBin", n_taxa = 19, other_name = "Other",
-    palette = distinct_palette(n = 19, add = "grey90"),
-    merge_other = FALSE,
-    bar_outline_colour = NA,
-    facet_by = "genus",
-    tax_order = "prev",
-    order_with_all_taxa = TRUE,
-  ) +
-  coord_flip() +
-  labs(x = NULL, y = NULL) +
-  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank()) +
- theme(aspect.ratio = 2)
 
-}
 
 #########or plto as faceted single figure
 
@@ -886,7 +875,7 @@ CompoPlot <- function(INPUT, GROUP_BY, FILTER_VAR, TAXLEV, MERGE, PALETTE) {
             ColonyTransDate = paste(sample_info1, "_", sample_info3),
             ColonyTransDate = gsub("^(?!.*date[0-9]+$).*$", "Not_transplanted", ColonyTransDate, perl = TRUE),
             ColonyTransDate = ifelse(is.na(ColonyTransDate), "Not_transplanted", ColonyTransDate),
-            CompGroup = paste0(collection_year, collection_month, apiary),
+            CompGroup = paste0(collection_year, apiary),
             flower_or_colony = ifelse(grepl("Sentinel|Colonies", Project), "from colony", "from flower"),
             CompGroupForC = paste0(collection_year, flower_or_colony),
             ColonyTransDateCompGroup = paste0(CompGroupForC, " ", apiary, " ", ColonyTransDate)
@@ -954,14 +943,22 @@ ggsave(plot=last_plot(), paste0("FigR6.1", ".png"), dpi=300, scale=2, units = "c
 
 ###
 CompoPlots <- c(CompoApis, CompoBombus)
-patch_CompoPlots <- patchwork::wrap_plots(CompoPlots, nrow = 2, guides = 'collect', heights = c(1.5, 1)) &
+
+
+
+patch_CompoPlots <- patchwork::wrap_plots(CompoPlots, byrow = FALSE, nrow = 3, guides = 'collect', heights = c(1, 1)) &
+      ##plot_annotation(tag_levels = list(c('B', 'C', 'D', 'E', 'F', 'G')))
       plot_annotation(tag_levels = 'A')
-patch_CompoPlots <- patch_CompoPlots & coord_flip() & guides(fill=guide_legend(ncol =1))
-cowplot::plot_grid(patch_CompoPlots, taxa_obj_CSS_HM_p, labels=c("", "G"), nrow = 2, ncol = 1)
+patch_CompoPlots <- patch_CompoPlots & 
+      coord_flip() &
+      guides(fill=guide_legend(ncol =1, title="")) &
+      theme(axis.text = element_text(size = 14), legend.text = element_text(size = 16))
+
+patch_CompoPlots
 
 
-ggsave(plot=last_plot(), paste0("FigR6.2", ".pdf"), dpi=300, height=36, width = 48, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR6.2", ".png"), dpi=300, height=36, width = 48, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR6.2", ".pdf"), dpi=300, height=18, width = 36, units = "cm")
+ggsave(plot=last_plot(), paste0("FigR6.2", ".png"), dpi=300, height=18, width = 36, units = "cm")
 
 ####### composition heatmap
   htmp <- physeq %>%
@@ -1404,12 +1401,12 @@ for (virus in unique_viruses) {
 sink()
 #################################
 
-CoverageDepths_filt %>% ggplot(aes(genus, Length, fill=genus, color = genus)) + 
+CoverageDepthsBeeSwarm <- CoverageDepths_filt %>% ggplot(aes(genus, Length, fill=genus, color = genus)) + 
 geom_beeswarm(size = 0.5) +
 facet_nested_wrap(. ~ RepresentativeName, scales = "free", ncol = 6)
 
-ggsave(plot=last_plot(), paste0("FigR13", ".pdf"), dpi=300, width = 48, height = 36, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR13", ".png"), dpi=300, width = 48, height = 36, units = "cm")
+ggsave(plot=CoverageDepthsBeeSwarm, paste0("FigR13", ".pdf"), dpi=300, width = 48, height = 36, units = "cm")
+ggsave(plot=CoverageDepthsBeeSwarm, paste0("FigR13", ".png"), dpi=300, width = 48, height = 36, units = "cm")
 
 ########################################################
 ########################################################
@@ -1417,7 +1414,48 @@ ggsave(plot=last_plot(), paste0("FigR13", ".png"), dpi=300, width = 48, height =
 ###################################################################################
 ###################################################################################
 
+## supplementary info
 
+pdf("Supplementary_Figures_S1-S5.pdf", width = 16, height = 12)
+
+RDS_apiary_RDS_distance_RDS_flower +
+      labs(caption = "Figure S1. PCA with redundancy analyses constraints of bee collection\n apiary (A), distance of collection from apiary (B), and flower genus collected\n from (C). Taxa influencing point distribution are labelled, as well as variables.\nGO = Ganda orthophasmavirus, BVV4 = Bombus-associated virus Vir4, AHV1 =\n Allermuir Hill virus 1, AHNV = Andrena haemorrhoa nege-like virus, BTI1 =\nBactrocera tryoni iflavirus 1, HPVO231 = Hymenopteran phasma-related virus\n OKIAV231, MV1 = Mayfield virus 1, BVR1 = Bombus-associated virus Reo1, HPV27 =\n Hubei picorna-like virus 27, VVAPV1 = Vespa velutina associated permutotetra-like\n virus 1, ARV = Agassiz Rock virus, CM = Cripavirus mortiferum, CR = Cripavirus\n ropadi, AA = Aparavirus apisacutum, AR1 = Apis rhabdovirus 1, HPV34 = Hubei\n partiti-like virus 34, VVPV2 = Vespa velutina partiti-like virus 2, LSV2 = Lake\n Sinai virus 2, HPVO233 = Hymenopteran phasma-related virus OKIAV233, US =\n Unclassified sinaivirus, LSV = Lake Sinai virus, LSV1 = Lake Sinai virus 1") +
+      theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+cowplot::plot_grid(correlhm_genus2021, correlhm_genus2022, correlhm_genus2023,
+correlhm_genusJuly, correlhm_genusAugust, correlhm_genusSeptember,
+labels=c("A", "B", "C", "D", "E", "F"),
+ncol = 3, nrow = 2) +
+labs(caption = "Figure S2. Correlation heatmaps of viral reads in Apis and Bombus across\n collection years (A-C) and months (D-F)") +
+      theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+cowplot::plot_grid(
+                  Unconstrained_PCA_2021,
+                  Unconstrained_PCA_2022,
+                  Unconstrained_PCA_2023,
+                  #Unconstrained_PCA_May,
+                  #Unconstrained_PCA_June,
+                  Unconstrained_PCA_July,
+                  Unconstrained_PCA_August,
+                  Unconstrained_PCA_September,
+                  #Unconstrained_PCA_October,
+                  #Unconstrained_PCA_November,
+                  labels = c('A','B','C','D','E','F'),
+                  ncol = 3) +
+      labs(caption = "Figure S3. PCA of bee collection year (A-C) and collection month (D-F).\n Taxa influencing point distribution are labelled. GO = Ganda orthophasmavirus,\n BVV4 = Bombus-associated virus Vir4, AHV1 = Allermuir Hill virus 1, AHNV =\n Andrena haemorrhoa nege-like virus, BTI1 = Bactrocera tryoni iflavirus 1, HPVO231\n = Hymenopteran phasma-related virus OKIAV231, MV1 = Mayfield virus 1, BVR1 =\n Bombus-associated virus Reo1, HPV27 = Hubei picorna-like virus 27, VVAPV1 = Vespa\n velutina associated permutotetra-like virus 1, ARV = Agassiz Rock virus, CM =\n Cripavirus mortiferum, CR = Cripavirus ropadi, AA = Aparavirus apisacutum, AR1 =\n Apis rhabdovirus 1, HPV34 = Hubei partiti-like virus 34, VVPV2 = Vespa\n velutina partiti-like virus 2, LSV2 = Lake Sinai virus 2, HPVO233 = Hymenopteran\n phasma-related virus OKIAV233, US = Unclassified sinaivirus, LSV = Lake Sinai\n virus, LSV1 = Lake Sinai virus 1") +
+            theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+CoverageDepthsBeeSwarm +
+      labs(caption = "Figure S4. Viral contig size distribution") +
+      theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+taxa_obj_CSS_HM_p +
+      labs(caption = "Figure S5. The number of reads (scaled to library size by cumulative\n sum scale normalisation) reads mapped to classified viral contigs. 389 Apis\n mellifera samples, 117 Bombus impatiens samples") +
+      theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+
+
+dev.off()
 
 
 
