@@ -831,39 +831,39 @@ assign(output_name, output$p)
 pdf("Supplementary_Figure_S6.pdf", width = 16, height = 12)
 
 Apis_rhabdovirus__Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946 +
-    labs(caption = "Figure S6A. Maximum likelihood phylogeny of Apis rhabdovirus\n Mononegavirales RdRp PF00946. Tree constructed using amino acid sequence in IQTREE\n with 1000 boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6A. Maximum likelihood phylogeny of Apis rhabdovirus\n Mononegavirales RdRp PF00946.. Tree constructed using amino acid sequence in IQTREE\n with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 Dicistroviridae__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6B. Maximum likelihood phylogeny of Dicistroviridae Pfam RNA\n dependent RNA polymerase PF00680. Tree constructed using amino acid sequence in IQTREE\nwith 1000 boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6B. Maximum likelihood phylogeny of Dicistroviridae Pfam RNA\n dependent RNA polymerase PF00680.. Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 Negevirus_Negevirus_like__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6C. Maximum likelihood phylogeny of Negevirus-like Pfam RNA\n dependent RNA polymerase PF00978 Tree constructed using amino acid sequence in IQTREE\nwith 1000 boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6C. Maximum likelihood phylogeny of Negevirus-like Pfam RNA\n dependent RNA polymerase PF00978. Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 Partiti_like__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6D. Maximum likelihood phylogeny of Negevirus-like Pfam RNA\n dependent RNA polymerase PF00978 Tree constructed using amino acid sequence in IQTREE\nwith 1000 boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6D. Maximum likelihood phylogeny of Negevirus-like Pfam RNA\n dependent RNA polymerase PF00978. Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 Phasmaviridae__Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196 +
-    labs(caption = "Figure S6E. Maximum likelihood phylogeny of Phasmaviridae Pfam RNA\n dependent RNA polymerase PF04196 Tree constructed using amino acid sequence in IQTREE\nwith 1000 boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6E. Maximum likelihood phylogeny of Phasmaviridae Pfam RNA\n dependent RNA polymerase PF04196. Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 Picorna_like_Mayfield__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6F. Maximum likelihood phylogeny of Mayfield (Picorna-like) virus Pfam\nRNA dependent RNA polymerase PF00680 Tree constructed using amino acid sequence in\nIQTREE with 1000 boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6F. Maximum likelihood phylogeny of Mayfield (Picorna-like) virus Pfam\nRNA dependent RNA polymerase PF00680. Tree constructed using amino acid sequence in\nIQTREE with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 Sinaivirus__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6G. Maximum likelihood phylogeny of Sinaivirus Pfam RNA dependent\n RNA polymerase PF00978 Tree constructed using amino acid sequence in IQTREE with 1000\n boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6G. Maximum likelihood phylogeny of Sinaivirus Pfam RNA dependent\n RNA polymerase PF00978. Tree constructed using amino acid sequence in IQTREE with 1000\n bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 Sinaivirus__Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998 +
-    labs(caption = "Figure S6H. Maximum likelihood phylogeny of Sinaivirus Pfam RNA dependent\n RNA polymerase PF00998 Tree constructed using amino acid sequence in IQTREE with 1000\n boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6H. Maximum likelihood phylogeny of Sinaivirus Pfam RNA dependent\n RNA polymerase PF00998. Tree constructed using amino acid sequence in IQTREE with 1000\n bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 Virga_like__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6I. Maximum likelihood phylogeny of Virga-like Pfam RNA dependent\n RNA polymerase PF00978 Tree constructed using amino acid sequence in IQTREE with 1000\n boostrap replications. Only boostrap nodes value >70 are shown.") +
+    labs(caption = "Figure S6I. Maximum likelihood phylogeny of Virga-like Pfam RNA dependent\n RNA polymerase PF00978. Tree constructed using amino acid sequence in IQTREE with 1000\n bootstrap replications. Only bootstrap node values >70 are shown.") +
           theme(plot.caption = element_text(hjust = 0.5, size = 16))
 
 dev.off()
