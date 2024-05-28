@@ -229,6 +229,30 @@ for (file in file_list) {
  	write.table(blastp.ref.sam.nw, paste0(output_name, ".blastp.network.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
 }
 
+## for AAI
+PrepForCytoscapeAAI <- function() {
+	aai.ref.sam.metadata <- all_lastp_aai %>%
+		left_join(ref.sam.metadata, by = 'contig') %>%
+		HostFilter() %>%
+		select(-G2, -AAI, -num_hits, -numprots_G1, -numprots_G2, -AF_G1, -AF_G2) %>%
+		distinct
+		return(aai.ref.sam.metadata)
+}
+
+PrepForCytoscapeAAI_nw <- function() {
+	blastp.ref.sam.nw <<- blastp %>%
+		left_join(ref.sam.metadata, by = c('contig_from' = 'contig')) %>%
+		left_join(ref.sam.metadata, by = c('contig_to' = 'contig')) %>%
+		HostFilter_nw() #%>%
+		#select(from, to, pident)
+}
+
+###### prep AAI data
+
+all_lastp_aai <- read.table("all_lastp_aai", header = TRUE, sep = "\t")
+all_lastp_aai$contig <- gsub("_[0-9]+__[0-9]+-[0-9]+$", "", all_lastp_aai$G1)
+all_lastp_aai.ref.sam.metadata <- PrepForCytoscapeAAI()
+write.table(all_lastp_aai.ref.sam.metadata, "all_lastp_aai.metadata.cytoscape.tsv", row.names = FALSE, quote = FALSE, sep = "\t")
 
 
 ########### plot with igraph, mostly works, but abandoned due to lack of way to label clusters

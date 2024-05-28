@@ -445,6 +445,24 @@ Virga_like + ggtitle('N\nVirga-like')
 
 dev.off()
 
+########### more DWV reference tree
+tree_ext <- ".fasttree"
+
+###############
+virus_name <- "Iflavirus_aladeformis_more"
+output_name <- "Iflavirus_aladeformis_more"
+
+PrepMetaDataTreeAA()
+#to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+#phytree <- drop.tip(phytree, to_drop)
+##phytree <- drop.tip(phytree, non_representatives_vector)
+phytree <- phangorn::midpoint(phytree)
+p <- DrawTree(phytree, "circular", "branch.length")
+
+p <- p + scale_fill_brewer(palette = "Paired")
+assign(output_name, output$p)
+
+
 
 ########################################################
 ########################################################
@@ -686,7 +704,7 @@ output_name <- "Iflaviridae_Iflavirus__Pfam__RNA_dependent_RNA_polymerase__PF006
 PrepMetaDataTreeAA()
 to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
-phytree <- drop.tip(phytree, non_representatives_vector)
+#phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
