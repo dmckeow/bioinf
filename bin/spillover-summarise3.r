@@ -815,7 +815,7 @@ RDS_flower <- physeq %>%
             "Chamaecrista"
             )) %>%
       ord_plot(plot_taxa = 1:10, color = "flower_genus", shape = "genus", size = 3, alpha = 0.8,
-            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 5),
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 4),
             tax_vec_style_all  = vec_tax_all(colour = "red"),
             constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
             constraint_vec_style  = vec_constraint(colour = "black"),
@@ -823,6 +823,43 @@ RDS_flower <- physeq %>%
       theme(aspect.ratio = 1) +
       scale_color_brewer(palette = "Paired") +
       scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
+
+RDS_flower_chars <- physeq %>%
+      ps_filter(collection_year != "2021") %>%
+      ps_filter(flower_shape != "") %>%
+      ps_filter(!grepl("Sentinel|Colonies", Project)) %>%
+      ps_mutate(
+            composite = ifelse(is.na(flower_shape), 0, as.numeric(flower_shape == "composite")),
+            cup = ifelse(is.na(flower_shape), 0, as.numeric(flower_shape == "cup")),
+            pea = ifelse(is.na(flower_shape), 0, as.numeric(flower_shape == "pea")),
+            tube = ifelse(is.na(flower_shape), 0, as.numeric(flower_shape == "tube")),
+            simple = ifelse(is.na(flower_shape_cat), 0, as.numeric(flower_shape_cat == "simple")),
+            complex = ifelse(is.na(flower_shape_cat), 0, as.numeric(flower_shape_cat == "complex")),
+            shallow = ifelse(is.na(flower_depth_cat), 0, as.numeric(flower_depth_cat == "shallow")),
+            medium = ifelse(is.na(flower_depth_cat), 0, as.numeric(flower_depth_cat == "medium")),
+            deep = ifelse(is.na(flower_depth_cat), 0, as.numeric(flower_depth_cat == "deep"))
+            ) %>%
+      tax_transform("clr", rank = "RepresentativeName") %>%
+      ord_calc(method="RDA", constraints = c(
+            "composite",
+            "cup",
+            "pea",
+            "tube",
+            "simple",
+            "complex",
+            "shallow",
+            "medium",
+            "deep",
+            "proportion_of_BBs_to_HBs"
+            )) %>%
+      ord_plot(plot_taxa = 1:10, color = "genus", shape = "flower_shape", size = 3, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 4),
+            tax_vec_style_all  = vec_tax_all(colour = "red"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
+      theme(aspect.ratio = 1) +
+      scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
 
 
 cowplot::plot_grid(RDS_year, RDS_month, labels = c('A','B'))
@@ -834,6 +871,10 @@ RDS_apiary_RDS_distance_RDS_flower <- cowplot::plot_grid(RDS_apiary, RDS_distanc
 
 ggsave(plot=RDS_apiary_RDS_distance_RDS_flower, paste0("FigR15", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
 ggsave(plot=RDS_apiary_RDS_distance_RDS_flower, paste0("FigR15", ".png"), dpi=300, width = 36, height = 24, units = "cm")
+
+
+ggsave(plot=RDS_flower_chars, paste0("FigR20", ".pdf"), dpi=300, width = 24, height = 18, units = "cm")
+ggsave(plot=RDS_flower_chars, paste0("FigR20", ".png"), dpi=300, width = 24, height = 18, units = "cm")
 
 ##############################################################################
 ### Permanova via adonsi2
@@ -847,12 +888,21 @@ dfmd_PAN <- dfmd_PAN %>%
       mutate(
             flower_genus = gsub(paste0("^((?!(?:", paste(valid_genera, collapse="|"), ")).)*$"), "Other", flower_genus, perl=TRUE),
             flower_genus = ifelse(is.na(flower_genus), "Other", flower_genus),
-            flower_genus = ifelse(collection_year == 2021, "flowers2021", flower_genus)
+            flower_genus = ifelse(collection_year == 2021, "flowers2021", flower_genus),
+            flower_shape = ifelse(is.na(flower_shape), "Other", flower_shape),
+            flower_shape_cat = ifelse(is.na(flower_shape_cat), "Other", flower_shape_cat),
+            flower_depth_cat = ifelse(is.na(flower_depth_cat), "Other", flower_depth_cat),
+            proportion_of_BBs_to_HBs = ifelse(is.na(proportion_of_BBs_to_HBs), "Other", proportion_of_BBs_to_HBs)
             )
 
 permanova <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * collection_year * collection_month * apiary * distance * flower_genus, data = dfmd_PAN, method="bray", na.rm = TRUE)
 
 write.table(permanova, "permanova.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
+
+
+permanova_flower_chars <- adonis2(t(taxa_obj_CSS_PCA) ~ genus * flower_shape * flower_shape_cat * flower_depth_cat * proportion_of_BBs_to_HBs, data = dfmd_PAN, method="bray", na.rm = TRUE)
+
+write.table(permanova_flower_chars, "permanova_flower_chars.txt", quote = FALSE, row.names = TRUE, col.names = TRUE)
 
 #### composition plot
 

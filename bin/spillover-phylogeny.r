@@ -178,10 +178,11 @@ scale_color_manual(values = c(
     #plot(p)
 }
 
-CollapseTree <- function(node_to_collapse) {
-    p <<- p %>% ggtree::collapse(node=node_to_collapse)
-    p + geom_text(aes(label=node), hjust=-.3) # table the nodes to find them
-    plot(p)
+CollapseTree <- function(tree, node_to_collapse) {
+    tree <- tree %>% ggtree::collapse(node=node_to_collapse)
+    tree + geom_text(aes(label=node), hjust=-.3) # table the nodes to find them
+    plot(tree)
+    return(tree)
 }
 
 LabelTreeClade <- function(NODE, LABEL) {
@@ -446,16 +447,14 @@ Virga_like + ggtitle('N\nVirga-like')
 dev.off()
 
 ########### more DWV reference tree
-tree_ext <- ".fasttree"
 
 ###############
 virus_name <- "Iflavirus_aladeformis_more"
 output_name <- "Iflavirus_aladeformis_more"
 
 PrepMetaDataTreeAA()
-#to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-#phytree <- drop.tip(phytree, to_drop)
-##phytree <- drop.tip(phytree, non_representatives_vector)
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
 
@@ -533,94 +532,7 @@ representatives_vector <- representatives_df$non_representative
 ##############################################################################
 ##############################################################################
 
-tree_ext <- ".contree"
 
-###############
-virus_name <- "Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196"
-output_name <- "Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196"
-
-PrepMetaDataTreeAA()
-to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-phytree <- drop.tip(phytree, to_drop)
-##phytree <- drop.tip(phytree, non_representatives_vector)
-phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "rectangular", "branch.length")
-
-output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.05, 0.01)
-output$p <- output$p + scale_fill_brewer(palette = "Paired")
-assign(output_name, output$p)
-
-
-###############
-virus_name <- "Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946"
-output_name <- "Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946"
-
-PrepMetaDataTreeAA()
-to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-phytree <- drop.tip(phytree, to_drop)
-##phytree <- drop.tip(phytree, non_representatives_vector)
-phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "rectangular", "branch.length")
-output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.05, 0.01)
-output$p <- output$p + scale_fill_brewer(palette = "Paired")
-assign(output_name, output$p)
-
-############### too many colors
-virus_name <- "Pfam__RNA_dependent_RNA_polymerase__PF00680"
-output_name <- "Pfam__RNA_dependent_RNA_polymerase__PF00680"
-
-PrepMetaDataTreeAA()
-to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-phytree <- drop.tip(phytree, to_drop)
-phytree <- drop.tip(phytree, non_representatives_vector)
-ref.sam.metadata <- TaxaNameCollapse1()
-
-phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.05, 0.01)
-output$p <- output$p + scale_fill_brewer(palette = "Paired")
-assign(output_name, output$p)
-
-###############
-virus_name <- "Pfam__RNA_dependent_RNA_polymerase__PF00978"
-output_name <- "Pfam__RNA_dependent_RNA_polymerase__PF00978"
-
-PrepMetaDataTreeAA()
-to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-phytree <- drop.tip(phytree, to_drop)
-##phytree <- drop.tip(phytree, non_representatives_vector)
-p <- DrawTree(phytree, "circular", "branch.length")
-phytree <- phangorn::midpoint(phytree)
-output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.05, 0.01)
-output$p <- output$p + scale_fill_brewer(palette = "Paired")
-assign(output_name, output$p)
-
-###############
-virus_name <- "Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998"
-output_name <- "Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998"
-
-PrepMetaDataTreeAA()
-to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-phytree <- drop.tip(phytree, to_drop)
-to_drop <- c("MW676134.1_2_40-305")
-phytree <- drop.tip(phytree, to_drop)
-##phytree <- drop.tip(phytree, non_representatives_vector)
-phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
-output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
-output$p <- output$p + scale_fill_brewer(palette = "Paired")
-assign(output_name, output$p)
-
-
-#pdf("FigPhyAA_Pfam_multi.pdf", width = 9, height = 9)
-
-#Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196 + ggtitle('A\nBunyavirus RdRp PF04196')
-#Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946 + ggtitle('B\nMononegavirales RdRp PF00946')
-#Pfam__RNA_dependent_RNA_polymerase__PF00680 + ggtitle('C\nRdRp PF00680')
-#Pfam__RNA_dependent_RNA_polymerase__PF00978 + ggtitle('D\nRdRp PF00978')
-#Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998 + ggtitle('E\nRdRp PF00998')
-
-#dev.off()
 
 ##########################################################
 
@@ -631,7 +543,7 @@ to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -643,59 +555,17 @@ output_name <- "Dicistroviridae__Pfam__RNA_dependent_RNA_polymerase__PF00680"
 PrepMetaDataTreeAA()
 to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
-#phytree <- drop.tip(phytree, non_representatives_vector)
 
-to_drop <- c("OR597291.1_2_1123-1601", "NC_025219.1_1_1331-1799")
+to_drop <- c("OR597291.1_2_1123-1601", "NC_025219.1_1_1331-1799", "29JAN24DM1___barcode66.contigs.fasta______tig00000096_3_16-491")
 phytree <- drop.tip(phytree, to_drop)
 
 ref.sam.metadata <- TaxaNameCollapse2()
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
-##
-#virus_name <- "Dicistroviridae_Aparavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#output_name <- "Dicistroviridae_Aparavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#PrepMetaDataTreeAA()
-#to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-#phytree <- drop.tip(phytree, to_drop)
-###phytree <- drop.tip(phytree, non_representatives_vector)
-#to_drop <- c("29JAN24DM1___barcode66.contigs.fasta______tig00000096_3_16-491", "29JAN24DM1___barcode66.contigs.fasta______tig00000096_1_14-127")
-#phytree <- drop.tip(phytree, to_drop)
-#phytree <- phangorn::midpoint(phytree)
-#p <- DrawTree(phytree, "circular", "branch.length")
-#output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
-#output$p <- output$p + scale_fill_brewer(palette = "Paired")
-#assign(output_name, output$p)
-#
-###
-#virus_name <- "Dicistroviridae_Cripavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#output_name <- "Dicistroviridae_Cripavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#PrepMetaDataTreeAA()
-#to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-#phytree <- drop.tip(phytree, to_drop)
-###phytree <- drop.tip(phytree, non_representatives_vector)
-#phytree <- phangorn::midpoint(phytree)
-#p <- DrawTree(phytree, "circular", "branch.length")
-#output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
-#output$p <- output$p + scale_fill_brewer(palette = "Paired")
-#assign(output_name, output$p)
-#
-###
-#
-#virus_name <- "Dicistroviridae_Triatovirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#output_name <- "Dicistroviridae_Triatovirus__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#PrepMetaDataTreeAA()
-#to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-#phytree <- drop.tip(phytree, to_drop)
-###phytree <- drop.tip(phytree, non_representatives_vector)
-#phytree <- phangorn::midpoint(phytree)
-#p <- DrawTree(phytree, "circular", "branch.length")
-#output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
-#output$p <- output$p + scale_fill_brewer(palette = "Paired")
-#assign(output_name, output$p)
 
 ##
 
@@ -713,44 +583,45 @@ assign(output_name, output$p)
 
 ##
 
-#virus_name <- "Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#output_name <- "Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#PrepMetaDataTreeAA()
-#to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-#phytree <- drop.tip(phytree, to_drop)
+virus_name <- "Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680"
+output_name <- "Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680"
+PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
-#phytree <- phangorn::midpoint(phytree)
-#p <- DrawTree(phytree, "circular", "branch.length")
-#output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
-#output$p <- output$p + scale_fill_brewer(palette = "Paired")
-#assign(output_name, output$p)
+phytree <- phangorn::midpoint(phytree)
+p <- DrawTree(phytree, "rectangular", "branch.length")
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
+output$p <- output$p + scale_fill_brewer(palette = "Paired")
+assign(output_name, output$p)
 
 ##
 
-#virus_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#output_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#PrepMetaDataTreeAA()
-#to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-#phytree <- drop.tip(phytree, to_drop)
+virus_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680"
+output_name <- "Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680"
+PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+phytree <- drop.tip(phytree, to_drop)
 ###phytree <- drop.tip(phytree, non_representatives_vector)
-#phytree <- phangorn::midpoint(phytree)
-#p <- DrawTree(phytree, "circular", "branch.length")
-#output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
-#output$p <- output$p + scale_fill_brewer(palette = "Paired")
-#assign(output_name, output$p)
+phytree <- phangorn::midpoint(phytree)
+p <- DrawTree(phytree, "rectangular", "branch.length")
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
+output$p <- output$p + scale_fill_brewer(palette = "Paired")
+assign(output_name, output$p)
 ###
 
-#virus_name <- "Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#output_name <- "Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680"
-#PrepMetaDataTreeAA()
-#to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
-#phytree <- drop.tip(phytree, to_drop)
-###phytree <- drop.tip(phytree, non_representatives_vector)
-#phytree <- phangorn::midpoint(phytree)
-#p <- DrawTree(phytree, "circular", "branch.length")
-#output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
-#output$p <- output$p + scale_fill_brewer(palette = "Paired")
-#assign(output_name, output$p)
+virus_name <- "Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680"
+output_name <- "Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680"
+PrepMetaDataTreeAA()
+to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
+to_drop <- c(to_drop, "29JAN24DM1___barcode29.contigs.fasta______tig00000005_1_1407-1789")
+phytree <- drop.tip(phytree, to_drop)
+
+phytree <- phangorn::midpoint(phytree)
+p <- DrawTree(phytree, "rectangular", "branch.length")
+output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
+output$p <- output$p + scale_fill_brewer(palette = "Paired")
+assign(output_name, output$p)
 
 ##
 
@@ -761,7 +632,7 @@ to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -775,7 +646,7 @@ to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -787,7 +658,7 @@ to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -799,7 +670,7 @@ to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -811,7 +682,7 @@ to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -829,7 +700,7 @@ ref.sam.metadata <- ref.sam.metadata %>%
     mutate(RepresentativeName = ifelse(RepresentativeName %in% c("Lake Sinai virus", "Unclassified sinaivirus"), "Unclassified lake sinaivirus", RepresentativeName))
 
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -841,7 +712,7 @@ to_drop <- HostFilter(ref.sam.metadata) %>% select(prot) %>% as.character()
 phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
-p <- DrawTree(phytree, "circular", "branch.length")
+p <- DrawTree(phytree, "rectangular", "branch.length")
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -849,40 +720,52 @@ assign(output_name, output$p)
 pdf("Supplementary_Figure_S6.pdf", width = 16, height = 12)
 
 Apis_rhabdovirus__Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946 +
-    labs(caption = "Figure S6A. Maximum likelihood phylogeny of Apis rhabdovirus\n Mononegavirales RdRp PF00946.. Tree constructed using amino acid sequence in IQTREE\n with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6A. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00946) of Apis\n rhabdoviruses. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications.\n Only bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 Dicistroviridae__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6B. Maximum likelihood phylogeny of Dicistroviridae Pfam RNA\n dependent RNA polymerase PF00680.. Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6B. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680)\nof Dicistroviridae. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications.\n Only bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+
+Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+    labs(caption = "Figure S6C. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680) related\n to Iflavirus aladeformis. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap\n replications. Only bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+
+Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+    labs(caption = "Figure S6D. Maximum likelihood phylogeny of RNA dependent RNA polymerase related to Bactrocera tryoni iflaviruses\n(Pfam PF00680). Tree constructed using amino acid sequence in IQTREE\n with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+
+Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+    labs(caption = "Figure S6E. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680) related to\n Iflavirus sacbroodi. Tree constructed using amino acid sequence in IQTREE\n with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 Negevirus_Negevirus_like__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6C. Maximum likelihood phylogeny of Negevirus-like Pfam RNA\n dependent RNA polymerase PF00978. Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6F. Maximum likelihood phylogeny of Negevirus-like RNA dependent RNA polymerase (Pfam\n PF00978). Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only\nbootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 Partiti_like__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6D. Maximum likelihood phylogeny of Negevirus-like Pfam RNA\n dependent RNA polymerase PF00978. Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6G. Maximum likelihood phylogeny of Partiti-like RNA dependent RNA polymerase (Pfam\n PF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 Phasmaviridae__Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196 +
-    labs(caption = "Figure S6E. Maximum likelihood phylogeny of Phasmaviridae Pfam RNA\n dependent RNA polymerase PF04196. Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6H. Maximum likelihood phylogeny of Phasmaviridae RNA dependent RNA polymerase (Pfam\n PF04196). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\nbootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 Picorna_like_Mayfield__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6F. Maximum likelihood phylogeny of Mayfield (Picorna-like) virus Pfam\nRNA dependent RNA polymerase PF00680. Tree constructed using amino acid sequence in\nIQTREE with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6I. Maximum likelihood phylogeny of Picorna-like RNA dependent RNA polymerase (Pfam\n PF00680). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 Sinaivirus__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6G. Maximum likelihood phylogeny of Sinaivirus Pfam RNA dependent\n RNA polymerase PF00978. Tree constructed using amino acid sequence in IQTREE with 1000\n bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6J. Maximum likelihood phylogeny of Sinaivirus RNA dependent RNA polymerase (Pfam\nPF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 Sinaivirus__Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998 +
-    labs(caption = "Figure S6H. Maximum likelihood phylogeny of Sinaivirus Pfam RNA dependent\n RNA polymerase PF00998. Tree constructed using amino acid sequence in IQTREE with 1000\n bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6K. Maximum likelihood phylogeny of Sinaivirus RNA dependent RNA polymerase (Pfam\nPF00998). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 Virga_like__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6I. Maximum likelihood phylogeny of Virga-like Pfam RNA dependent\n RNA polymerase PF00978. Tree constructed using amino acid sequence in IQTREE with 1000\n bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 16))
+    labs(caption = "Figure S6L. Maximum likelihood phylogeny of Virga-like RNA dependent RNA polymerase (Pfam\nPF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
 dev.off()
 
