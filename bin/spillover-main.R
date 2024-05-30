@@ -453,6 +453,15 @@ PlotOrdUnconsrainedOthers <- function(VAR) {
   scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
 }
 
+PlotOrdUnconsrainedOthers2 <- function(VAR) {
+      PCoA_physeq %>%
+  ord_plot(color = "genus", shape = VAR, alpha = 0.8, size = 2) +
+  ggside::theme_ggside_void() +
+  theme(aspect.ratio = 1) +
+  guides(fill = guide_legend(reverse = FALSE)) +
+  scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+}
+
 Ord_main <- PlotOrdUnconsrained()
 
 
@@ -509,6 +518,12 @@ scale_color_manual(name = "Genus of flower collected from", values = c(
   "Eutrochium" = "#ffff99", # light yellow
   "Chamaecrista" = "#b15928"  # dark brown
 ), na.value = "black")
+
+
+Ord_main_flower_shape <- PlotOrdUnconsrainedOthers2("flower_shape")
+Ord_main_flower_shape_cat <- PlotOrdUnconsrainedOthers2("flower_shape_cat")
+Ord_main_flower_depth_cat <- PlotOrdUnconsrainedOthers2("flower_depth_cat")
+  
 
 cowplot::plot_grid(Ord_main, Ord_main_yearlab, Ord_main_monthlab, Ord_main_dist, Ord_main_apiary, labels = c('A','B','C','D','E'))
 
