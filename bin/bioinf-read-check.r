@@ -22,7 +22,6 @@ library(treemapify)
 #library(viridis) #
 #library(viridisLite) #
 
-
 theme_set(theme_classic())
 set.seed(1234)
 
