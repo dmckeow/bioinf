@@ -3,6 +3,7 @@
 ##### This script computes pairwise homology between proteins in two genomes using LAST ####
 ##### It requires that LAST is installed and can be called from the working directory.  ####
 ##### Usage: pairwise_lastp.py <input_folder> <output_folder>                           ####
+##### Adapated from https://github.com/faylward/lastp_aai with minor syntax changes to work in python 3
 ############################################################################################
 
 import os, sys, re, subprocess, shlex
