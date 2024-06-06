@@ -418,7 +418,7 @@ physeq = phyloseq(OTU, TAX, sampledata, remove_undetected = TRUE)
 physeq <- phyloseq_validate(physeq)
 
 
-
+physeq@sam_data[["Overall_BBHB_ratio"]] <- as.character(physeq@sam_data[["Overall_BBHB_ratio"]])
 ### calc for PCoA
 PCoA_physeq <- physeq %>%
   tax_transform("identity", rank = "RepresentativeName") %>% # don't transform!
@@ -839,7 +839,7 @@ RDS_flower <- physeq %>%
       scale_color_brewer(palette = "Paired") +
       scale_shape_manual(values = c("Apis" = 17, "Bombus" = 16))
 
-RDS_flower_chars <- physeq %>%
+physeq_flower_chars <- physeq %>%
       ps_filter(collection_year != "2021") %>%
       ps_filter(flower_shape != "") %>%
       ps_filter(!grepl("Sentinel|Colonies", Project)) %>%
@@ -853,19 +853,15 @@ RDS_flower_chars <- physeq %>%
             shallow = ifelse(is.na(flower_depth_cat), 0, as.numeric(flower_depth_cat == "shallow")),
             medium = ifelse(is.na(flower_depth_cat), 0, as.numeric(flower_depth_cat == "medium")),
             deep = ifelse(is.na(flower_depth_cat), 0, as.numeric(flower_depth_cat == "deep"))
-            ) %>%
+            ) 
+
+RDS_flower_chars_shape <- physeq_flower_chars %>%
       tax_transform("clr", rank = "RepresentativeName") %>%
       ord_calc(method="RDA", constraints = c(
             "composite",
             "cup",
             "pea",
-            "tube",
-            "simple",
-            "complex",
-            "shallow",
-            "medium",
-            "deep",
-            "proportion_of_BBs_to_HBs"
+            "tube"
             )) %>%
       ord_plot(plot_taxa = 1:10, color = "genus", shape = "flower_shape", size = 3, alpha = 0.8,
             tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 4),
@@ -875,6 +871,51 @@ RDS_flower_chars <- physeq %>%
             taxon_renamer = RenameTaxa) +
       theme(aspect.ratio = 1) +
       scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
+RDS_flower_chars_shape_cat <- physeq_flower_chars %>%
+      tax_transform("clr", rank = "RepresentativeName") %>%
+      ord_calc(method="RDA", constraints = c(
+            "simple",
+            "complex"
+            )) %>%
+      ord_plot(plot_taxa = 1:10, color = "genus", shape = "flower_shape_cat", size = 3, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 4),
+            tax_vec_style_all  = vec_tax_all(colour = "red"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
+      theme(aspect.ratio = 1) +
+      scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
+RDS_flower_chars_depth_cat <- physeq_flower_chars %>%
+      tax_transform("clr", rank = "RepresentativeName") %>%
+      ord_calc(method="RDA", constraints = c(
+            "shallow",
+            "medium",
+            "deep"
+            )) %>%
+      ord_plot(plot_taxa = 1:10, color = "genus", shape = "flower_depth_cat", size = 3, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 4),
+            tax_vec_style_all  = vec_tax_all(colour = "red"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
+      theme(aspect.ratio = 1) +
+      scale_color_manual(values = c("Apis" = Paired_pal[6], "Bombus" = Paired_pal[2]))
+
+RDS_flower_chars_proportion_of_BBs_to_HBs <- physeq_flower_chars %>%
+      tax_transform("clr", rank = "RepresentativeName") %>%
+      ord_calc(method="RDA", constraints = c(
+            "proportion_of_BBs_to_HBs"
+            )) %>%
+      ord_plot(plot_taxa = 1:10, color = "proportion_of_BBs_to_HBs", shape = "genus", size = 3, alpha = 0.8,
+            tax_lab_style = tax_lab_style(colour = "grey30", type = "text", fontface = "bold", max_angle = 90, size = 4),
+            tax_vec_style_all  = vec_tax_all(colour = "red"),
+            constraint_lab_style = constraint_lab_style(colour = "black", type = "text", fontface = "bold", max_angle = 90, size = 3),
+            constraint_vec_style  = vec_constraint(colour = "black"),
+            taxon_renamer = RenameTaxa) +
+      theme(aspect.ratio = 1) +
+      scale_color_viridis_c(option="plasma")
 
 
 cowplot::plot_grid(RDS_year, RDS_month, labels = c('A','B'))
@@ -887,9 +928,10 @@ RDS_apiary_RDS_distance_RDS_flower <- cowplot::plot_grid(RDS_apiary, RDS_distanc
 ggsave(plot=RDS_apiary_RDS_distance_RDS_flower, paste0("FigR15", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
 ggsave(plot=RDS_apiary_RDS_distance_RDS_flower, paste0("FigR15", ".png"), dpi=300, width = 36, height = 24, units = "cm")
 
+RDS_flower_chars <- cowplot::plot_grid(RDS_flower_chars_shape, RDS_flower_chars_shape_cat, RDS_flower_chars_depth_cat, RDS_flower_chars_proportion_of_BBs_to_HBs, labels = c('A','B','C','D'))
 
-ggsave(plot=RDS_flower_chars, paste0("FigR20", ".pdf"), dpi=300, width = 24, height = 18, units = "cm")
-ggsave(plot=RDS_flower_chars, paste0("FigR20", ".png"), dpi=300, width = 24, height = 18, units = "cm")
+ggsave(plot=RDS_flower_chars, paste0("FigR20", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
+ggsave(plot=RDS_flower_chars, paste0("FigR20", ".png"), dpi=300, width = 36, height = 24, units = "cm")
 
 ##############################################################################
 ### Permanova via adonsi2
@@ -960,14 +1002,13 @@ CompoPlot <- function(INPUT, GROUP_BY, FILTER_VAR, TAXLEV, MERGE, PALETTE) {
 }
 
 #### transplatnt colony samples
-CompoTrans <- CompoPlot(physeq, "collection_year", "Bombus", "RepresentativeName", "ColonyTransDateCompGroup", topPal)
-patchTrans <- patchwork::wrap_plots(CompoTrans, guides = 'collect', ncol = 1, heights = c(1, 1, 3)) &
-      plot_annotation(tag_levels = 'A')
+CompoTrans <- CompoPlot(physeq, "genus", "Bombus", "RepresentativeName", "ColonyTransDateCompGroup", topPal)
+patchTrans <- patchwork::wrap_plots(CompoTrans, guides = 'collect', ncol = 1)
 
-patchTrans & coord_flip() & guides(fill=guide_legend(ncol =1))
+TransCompoplot <- patchTrans + coord_flip() + guides(fill=guide_legend(ncol =1))
 
-ggsave(plot=last_plot(), paste0("FigR18", ".pdf"), dpi=300, height = 30, width = 36, units = "cm")
-ggsave(plot=last_plot(), paste0("FigR18", ".png"), dpi=300, height = 30, width = 36, units = "cm")
+ggsave(plot=TransCompoplot, paste0("FigR18", ".pdf"), dpi=300, height = 30, width = 36, units = "cm")
+ggsave(plot=TransCompoplot, paste0("FigR18", ".png"), dpi=300, height = 30, width = 36, units = "cm")
 
 ###########
 
