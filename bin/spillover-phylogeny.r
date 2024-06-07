@@ -717,7 +717,7 @@ output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
-pdf("Supplementary_Figure_S6.pdf", width = 16, height = 12)
+pdf("Supplementary_Figure_S7.pdf", width = 16, height = 12)
 
 Apis_rhabdovirus__Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946 +
     labs(caption = "Figure S6A. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00946) of Apis\n rhabdoviruses. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications.\n Only bootstrap node values >70 are shown.") +
