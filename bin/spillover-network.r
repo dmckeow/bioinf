@@ -403,3 +403,37 @@ blastp.md <- blastp %>%
 colnames(blastp.md) <- c("from", "Organism_Name", "SRA_Accession", "Submitters", "Organization", "Org_location", "Release_Date", "Isolate", "Species", "Genus", "Family", "Molecule_type", "Length", "Sequence_Type", "Nuc_Completeness", "Genotype", "Segment", "Publications", "Geo_Location", "Country", "USA", "Host", "Isolation_Source", "Collection_Date", "BioSample", "BioProject", "GenBank_Title")
 
 write.table(blastp.md, paste0(output_name, ".metadata.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
+
+
+## setwd("C:/Users/Dean Mckeown/Downloads/ref_networks_AB")
+
+
+md <- read.table("Apis_Bombus_DWV_BQCV_SBV.csv", header = TRUE, sep = ",")
+
+## fastANI
+ReadMatrix("fastANI/Apis_Bombus_DWV_BQCV_SBV.NoMmseqs.matrix")
+output_name = "Apis_Bombus_DWV_BQCV_SBV.fastANI"
+network_df <- as.data.frame(as.table(fastANI_matrix))
+colnames(network_df) <- c("from", "to", "weight")
+network_df$from <- gsub("\\.\\d+","",network_df$from)
+network_df$to <- gsub("\\.\\d+","",network_df$to)
+network_df <- network_df[network_df$weight != 0, ]
+write.table(network_df, paste0(output_name, ".network.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
+
+## blastp
+output_name = "Apis_Bombus_DWV_BQCV_SBV.blastp"
+blastp <- read.table("Apis_Bombus_DWV_BQCV_SBV__Pfam__RNA_dependent_RNA_polymerase__PF00680.blastp", header = TRUE, sep = "\t")
+blastp$contig_from <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$from)
+blastp$contig_to <- gsub("_[0-9]+:[0-9]+-[0-9]+$", "", blastp$to)
+#blastp$contig_from <- gsub("\\.\\d+","",blastp$contig_from)
+#blastp$contig_to <- gsub("\\.\\d+","",blastp$contig_to)
+
+blastp.md <- blastp %>%
+		left_join(md, by = c('contig_from' = 'Accession')) %>%
+		left_join(md, by = c('contig_to' = 'Accession')) %>%
+		select("from", "Organism_Name.x", "SRA_Accession.x", "Submitters.x", "Organization.x", "Org_location.x", "Release_Date.x", "Isolate.x", "Species.x", "Genus.x", "Family.x", "Molecule_type.x", "Length.x", "Sequence_Type.x", "Nuc_Completeness.x", "Genotype.x", "Segment.x", "Publications.x", "Geo_Location.x", "Country.x", "USA.x", "Host.x", "Isolation_Source.x", "Collection_Date.x", "BioSample.x", "BioProject.x", "GenBank_Title.x") %>%
+		distinct()
+
+colnames(blastp.md) <- c("from", "Organism_Name", "SRA_Accession", "Submitters", "Organization", "Org_location", "Release_Date", "Isolate", "Species", "Genus", "Family", "Molecule_type", "Length", "Sequence_Type", "Nuc_Completeness", "Genotype", "Segment", "Publications", "Geo_Location", "Country", "USA", "Host", "Isolation_Source", "Collection_Date", "BioSample", "BioProject", "GenBank_Title")
+
+write.table(blastp.md, paste0(output_name, ".metadata.cytoscape.tsv"), row.names = FALSE, quote = FALSE, sep = "\t")
