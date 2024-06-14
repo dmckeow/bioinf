@@ -1539,18 +1539,26 @@ ggsave(plot=CoverageDepthsBeeSwarm, paste0("FigR13", ".png"), dpi=300, width = 4
 
 ## supplementary info
 
-pdf("Supplementary_Figures_S1-S6.pdf", width = 16, height = 16)
+##pdf("Supplementary_Figures_S1-S6.pdf", width = 16, height = 16)
 
-RDS_apiary_RDS_distance_RDS_flower +
-      labs(caption = "Figure S1. PCA with redundancy analyses constraints of bee collection\n apiary (A), distance of collection from apiary (B), and flower genus collected\n from (C). Taxa influencing point distribution are labelled, as well as variables.\nGO = Ganda orthophasmavirus, BVV4 = Bombus-associated virus Vir4, AHV1 =\n Allermuir Hill virus 1, AHNV = Andrena haemorrhoa nege-like virus, BTI1 =\nBactrocera tryoni iflavirus 1, HPVO231 = Hymenopteran phasma-related virus\n OKIAV231, MV1 = Mayfield virus 1, BVR1 = Bombus-associated virus Reo1, HPV27 =\n Hubei picorna-like virus 27, VVAPV1 = Vespa velutina associated permutotetra-like\n virus 1, ARV = Agassiz Rock virus, CM = Cripavirus mortiferum, CR = Cripavirus\n ropadi, AA = Aparavirus apisacutum, AR1 = Apis rhabdovirus 1, HPV34 = Hubei\n partiti-like virus 34, VVPV2 = Vespa velutina partiti-like virus 2, LSV2 = Lake\n Sinai virus 2, HPVO233 = Hymenopteran phasma-related virus OKIAV233, US =\n Unclassified sinaivirus, LSV = Lake Sinai virus, LSV1 = Lake Sinai virus 1") +
-      theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+ggsave(plot=RDS_apiary_RDS_distance_RDS_flower, paste0("Figure_S1", ".png"), dpi=300, width = 36, height = 36, units = "cm")
+#RDS_apiary_RDS_distance_RDS_flower +
+      #labs(caption = "Figure S1. PCA with redundancy analyses constraints of bee collection\n apiary (A), distance of collection from apiary (B), and flower genus collected\n from (C). Taxa influencing point distribution are labelled, as well as variables.\nGO = Ganda orthophasmavirus, BVV4 = Bombus-associated virus Vir4, AHV1 =\n Allermuir Hill virus 1, AHNV = Andrena haemorrhoa nege-like virus, BTI1 =\nBactrocera tryoni iflavirus 1, HPVO231 = Hymenopteran phasma-related virus\n OKIAV231, MV1 = Mayfield virus 1, BVR1 = Bombus-associated virus Reo1, HPV27 =\n Hubei picorna-like virus 27, VVAPV1 = Vespa velutina associated permutotetra-like\n virus 1, ARV = Agassiz Rock virus, CM = Cripavirus mortiferum, CR = Cripavirus\n ropadi, AA = Aparavirus apisacutum, AR1 = Apis rhabdovirus 1, HPV34 = Hubei\n partiti-like virus 34, VVPV2 = Vespa velutina partiti-like virus 2, LSV2 = Lake\n Sinai virus 2, HPVO233 = Hymenopteran phasma-related virus OKIAV233, US =\n Unclassified sinaivirus, LSV = Lake Sinai virus, LSV1 = Lake Sinai virus 1") +
+      #theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+png("Figure_S2.png", width = 30, height = 36, res = 300, units = "cm")
 
 cowplot::plot_grid(correlhm_genus2021, correlhm_genus2022, correlhm_genus2023,
 correlhm_genusJuly, correlhm_genusAugust, correlhm_genusSeptember,
 labels=c("A", "B", "C", "D", "E", "F"),
-ncol = 3, nrow = 2) +
-labs(caption = "Figure S2. Correlation heatmaps of viral reads in Apis and Bombus across\n collection years (A-C) and months (D-F)") +
-      theme(plot.caption = element_text(hjust = 0.5, size = 16))
+ncol = 2, nrow = 3) #+
+#labs(caption = "Figure S2. Correlation heatmaps of viral reads in Apis and Bombus across\n collection years (A-C) and months (D-F)") +
+#      theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+dev.off()
+
+png("Figure_S3.png", width = 30, height = 36, res = 300, units = "cm")
 
 cowplot::plot_grid(
                   Unconstrained_PCA_2021,
@@ -1564,26 +1572,34 @@ cowplot::plot_grid(
                   #Unconstrained_PCA_October,
                   #Unconstrained_PCA_November,
                   labels = c('A','B','C','D','E','F'),
-                  ncol = 3) +
-      labs(caption = "Figure S3. PCA of bee collection year (A-C) and collection month (D-F).\n Taxa influencing point distribution are labelled. GO = Ganda orthophasmavirus,\n BVV4 = Bombus-associated virus Vir4, AHV1 = Allermuir Hill virus 1, AHNV =\n Andrena haemorrhoa nege-like virus, BTI1 = Bactrocera tryoni iflavirus 1, HPVO231\n = Hymenopteran phasma-related virus OKIAV231, MV1 = Mayfield virus 1, BVR1 =\n Bombus-associated virus Reo1, HPV27 = Hubei picorna-like virus 27, VVAPV1 = Vespa\n velutina associated permutotetra-like virus 1, ARV = Agassiz Rock virus, CM =\n Cripavirus mortiferum, CR = Cripavirus ropadi, AA = Aparavirus apisacutum, AR1 =\n Apis rhabdovirus 1, HPV34 = Hubei partiti-like virus 34, VVPV2 = Vespa\n velutina partiti-like virus 2, LSV2 = Lake Sinai virus 2, HPVO233 = Hymenopteran\n phasma-related virus OKIAV233, US = Unclassified sinaivirus, LSV = Lake Sinai\n virus, LSV1 = Lake Sinai virus 1") +
-            theme(plot.caption = element_text(hjust = 0.5, size = 16))
-
-CoverageDepthsBeeSwarm +
-      labs(caption = "Figure S4. Viral contig size distribution") +
-      theme(plot.caption = element_text(hjust = 0.5, size = 16))
-
-taxa_obj_CSS_HM_p +
-      labs(caption = "Figure S5. The number of reads (scaled to library size by cumulative\n sum scale normalisation) reads mapped to classified viral contigs. 389 Apis\n mellifera samples, 117 Bombus impatiens samples") +
-      theme(plot.caption = element_text(hjust = 0.5, size = 16))
-
-Unconstrained_PCA_Bombus_t__TransCompoplot + 
-      labs(caption = str_wrap("Figure S6. Analyses of transplanted Bombus colonies. (A) Unconstrained PCA of samples colored by the transplantation time point (ColonyTransDate) and treatment (col34 and colCR are the two transplanted colonies, Not_transplanted are samples collected from flowers). Taxa influencing point distribution are labelled, as well as variables. AA = Aparavirus apisacutum, AHNV = Andrena haemorrhoa nege-like virus, AHV1 = Allermuir Hill virus 1, AI = Aparavirus israelense, AR1 = Apis rhabdovirus 1, ARV = Agassiz Rock virus, BTI1 = Bactrocera tryoni iflavirus 1, BVR1 = Bombus-associated virus Reo1, BVV4 = Bombus-associated virus Vir4, CBPV = Chronic bee paralysis virus, CIPV = Cyclosorus interruptus picorna-like virus, CM = Cripavirus mortiferum, CR = Cripavirus ropadi, ELV = Elf Loch virus, GO = Ganda orthophasmavirus, HPV27 = Hubei picorna-like virus 27, HPV34 = Hubei partiti-like virus 34, HPVO231 = Hymenopteran phasma-related virus OKIAV231, HPVO233 = Hymenopteran phasma-related virus OKIAV233, HPVO234 = Hymenopteran phasma-related virus OKIAV234, IA = Iflavirus aladeformis, IS = Iflavirus sacbroodi, LSV = Lake Sinai virus, LSV1 = Lake Sinai virus 1, LSV2 = Lake Sinai virus 2, LSV3 = Lake Sinai virus 3, LSV6 = Lake Sinai virus 6, MV1 = Mayfield virus 1, TN = Triatovirus nigereginacellulae, UP = Unclassified phasmaviridae, US = Unclassified sinaivirus, VVAPV1 = Vespa velutina associated permutotetra-like virus 1, VVPV2 = Vespa velutina partiti-like virus 2. (B) Compositions of viral communities in Bombus from flowers (Not_transplanted) and transplanted colonies (colCR and col34). Relative abundances of viruses are merged by experimental treatment", width = 120)) +
-      theme(plot.caption = element_text(hjust = 0.5, size = 14))
-
-
-
-
+                  ncol = 2) #+
+      #labs(caption = "Figure S3. PCA of bee collection year (A-C) and collection month (D-F).\n Taxa influencing point distribution are labelled. GO = Ganda orthophasmavirus,\n BVV4 = Bombus-associated virus Vir4, AHV1 = Allermuir Hill virus 1, AHNV =\n Andrena haemorrhoa nege-like virus, BTI1 = Bactrocera tryoni iflavirus 1, HPVO231\n = Hymenopteran phasma-related virus OKIAV231, MV1 = Mayfield virus 1, BVR1 =\n Bombus-associated virus Reo1, HPV27 = Hubei picorna-like virus 27, VVAPV1 = Vespa\n velutina associated permutotetra-like virus 1, ARV = Agassiz Rock virus, CM =\n Cripavirus mortiferum, CR = Cripavirus ropadi, AA = Aparavirus apisacutum, AR1 =\n Apis rhabdovirus 1, HPV34 = Hubei partiti-like virus 34, VVPV2 = Vespa\n velutina partiti-like virus 2, LSV2 = Lake Sinai virus 2, HPVO233 = Hymenopteran\n phasma-related virus OKIAV233, US = Unclassified sinaivirus, LSV = Lake Sinai\n virus, LSV1 = Lake Sinai virus 1") +
+      #     theme(plot.caption = element_text(hjust = 0.5, size = 16))
 dev.off()
+
+
+ggsave(plot=CoverageDepthsBeeSwarm, paste0("Figure_S4", ".png"), dpi=300, width = 28, height = 36, units = "cm")
+
+#CoverageDepthsBeeSwarm +
+ #     labs(caption = "Figure S4. Viral contig size distribution") +
+  #    theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+ggsave(plot=taxa_obj_CSS_HM_p, paste0("Figure_S5", ".png"), dpi=300, width = 36, height = 36, units = "cm")
+
+#taxa_obj_CSS_HM_p +
+ #     labs(caption = "Figure S5. The number of reads (scaled to library size by cumulative\n sum scale normalisation) reads mapped to classified viral contigs. 389 Apis\n mellifera samples, 117 Bombus impatiens samples") +
+  #    theme(plot.caption = element_text(hjust = 0.5, size = 16))
+
+png("Figure_S6.png", width = 30, height = 36, res = 300, units = "cm")
+
+Unconstrained_PCA_Bombus_t__TransCompoplot #+ 
+      #labs(caption = str_wrap("Figure S6. Analyses of transplanted Bombus colonies. (A) Unconstrained PCA of samples colored by the transplantation time point (ColonyTransDate) and treatment (col34 and colCR are the two transplanted colonies, Not_transplanted are samples collected from flowers). Taxa influencing point distribution are labelled, as well as variables. AA = Aparavirus apisacutum, AHNV = Andrena haemorrhoa nege-like virus, AHV1 = Allermuir Hill virus 1, AI = Aparavirus israelense, AR1 = Apis rhabdovirus 1, ARV = Agassiz Rock virus, BTI1 = Bactrocera tryoni iflavirus 1, BVR1 = Bombus-associated virus Reo1, BVV4 = Bombus-associated virus Vir4, CBPV = Chronic bee paralysis virus, CIPV = Cyclosorus interruptus picorna-like virus, CM = Cripavirus mortiferum, CR = Cripavirus ropadi, ELV = Elf Loch virus, GO = Ganda orthophasmavirus, HPV27 = Hubei picorna-like virus 27, HPV34 = Hubei partiti-like virus 34, HPVO231 = Hymenopteran phasma-related virus OKIAV231, HPVO233 = Hymenopteran phasma-related virus OKIAV233, HPVO234 = Hymenopteran phasma-related virus OKIAV234, IA = Iflavirus aladeformis, IS = Iflavirus sacbroodi, LSV = Lake Sinai virus, LSV1 = Lake Sinai virus 1, LSV2 = Lake Sinai virus 2, LSV3 = Lake Sinai virus 3, LSV6 = Lake Sinai virus 6, MV1 = Mayfield virus 1, TN = Triatovirus nigereginacellulae, UP = Unclassified phasmaviridae, US = Unclassified sinaivirus, VVAPV1 = Vespa velutina associated permutotetra-like virus 1, VVPV2 = Vespa velutina partiti-like virus 2. (B) Compositions of viral communities in Bombus from flowers (Not_transplanted) and transplanted colonies (colCR and col34). Relative abundances of viruses are merged by experimental treatment", width = 120)) +
+      #theme(plot.caption = element_text(hjust = 0.5, size = 14))
+dev.off()
+
+
+
+#dev.off()
 
 
 

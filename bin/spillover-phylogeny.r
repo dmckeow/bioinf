@@ -42,20 +42,20 @@ HostFilter <- function(data) {
 
 
 TaxaNameCollapse1 <- function() {
-    ref.sam.metadata$RepresentativeName <- gsub("Apis rhabdovirus .*", "Apis rhabdovirus", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub("apis rhabdovirus .*", "apis rhabdovirus", ref.sam.metadata$RepresentativeName)
     ref.sam.metadata$RepresentativeName <- gsub(".*cripavirus.*|.*Cripavirus.*", "Cripavirus", ref.sam.metadata$RepresentativeName)
-    ref.sam.metadata$RepresentativeName <- gsub(".*partiti-like.*", "Partiti-like virus", ref.sam.metadata$RepresentativeName)
-    ref.sam.metadata$RepresentativeName <- gsub("Allermuir.*|.*virga-like.*", "Virga-like virus", ref.sam.metadata$RepresentativeName)
-    ref.sam.metadata$RepresentativeName <- gsub("Bactrocera tryoni.*", "Bactrocera tryoni iflavirus", ref.sam.metadata$RepresentativeName)
-    ref.sam.metadata$RepresentativeName <- gsub(".*phasma.*", "Phasmaviridae", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub(".*partiti-like.*", "partiti-like virus", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub("allermuir.*|.*virga-like.*", "virga-like virus", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub("bactrocera tryoni.*", "bactrocera tryoni iflavirus", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub(".*phasma.*", "phasmaviridae", ref.sam.metadata$RepresentativeName)
     ref.sam.metadata$RepresentativeName <- gsub("Aparavirus.*", "Aparavirus", ref.sam.metadata$RepresentativeName)
-    ref.sam.metadata$RepresentativeName <- gsub(".*Mayfield.*", "Picorna-like virus", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub(".*mayfield.*", "picorna-like virus", ref.sam.metadata$RepresentativeName)
 
     ref.sam.metadata <- ref.sam.metadata %>%
     mutate(RepresentativeName = ifelse(RepresentativeName %in% c("Triatovirus himetobi", "Triatovirus hocoagulatae", "Triatovirus plastali", "Triatovirus triatomae", "Triatovirus nigereginacellulae"), "Triatovirus", RepresentativeName))
-    ref.sam.metadata$RepresentativeName <- gsub("Lake Sinai .irus.*|.*sinaivirus.*", "Lake Sinai virus", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub(".ake .inai .irus.*|.*sinaivirus.*", "Lake Sinai virus", ref.sam.metadata$RepresentativeName)
 
-    ref.sam.metadata$RepresentativeName <- gsub(".*nege-like.*|Wallerfield.*", "Nege-like virus", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub(".*nege-like.*|Wallerfield.*", "nege-like virus", ref.sam.metadata$RepresentativeName)
     return(ref.sam.metadata)
 }
 
@@ -66,7 +66,7 @@ TaxaNameCollapse2 <- function() {
     ref.sam.metadata <- ref.sam.metadata %>%
     mutate(RepresentativeName = ifelse(RepresentativeName %in% c("Aparavirus cancerluti", "Aparavirus kashmirense", "Aparavirus tauraense", "Aparavirus vallesi"), "Other aparaviruses", RepresentativeName))
 
-    ref.sam.metadata$RepresentativeName <- gsub("Bactrocera dorsalis cripavirus.*", "Bactrocera dorsalis cripavirus", ref.sam.metadata$RepresentativeName)
+    ref.sam.metadata$RepresentativeName <- gsub("bactrocera dorsalis cripavirus.*", "bactrocera dorsalis cripavirus", ref.sam.metadata$RepresentativeName)
     
     return(ref.sam.metadata)
 }
@@ -717,57 +717,84 @@ output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
 
-pdf("Supplementary_Figure_S7.pdf", width = 16, height = 12)
+#pdf("Supplementary_Figure_S7.pdf", width = 16, height = 12)
 
-Apis_rhabdovirus__Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946 +
-    labs(caption = "Figure S6A. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00946) of Apis\n rhabdoviruses. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications.\n Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Apis_rhabdovirus__Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946 +
+##    #labs(caption = "Figure S6A. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00946) of Apis\n rhabdoviruses. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications.\n Only bootstrap node values >70 are shown.") +
+#    #     theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Dicistroviridae__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+#    #labs(caption = "Figure S6B. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680)\nof Dicistroviridae. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications.\n Only bootstrap node values >70 are shown.") +
+#    #      theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+#    labs(caption = "Figure S6C. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680) related\n to Iflavirus aladeformis. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap\n replications. Only bootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+#    labs(caption = "Figure S6D. Maximum likelihood phylogeny of RNA dependent RNA polymerase related to Bactrocera tryoni iflaviruses\n(Pfam PF00680). Tree constructed using amino acid sequence in IQTREE\n with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+#    labs(caption = "Figure S6E. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680) related to\n Iflavirus sacbroodi. Tree constructed using amino acid sequence in IQTREE\n with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Negevirus_Negevirus_like__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
+#    labs(caption = "Figure S6F. Maximum likelihood phylogeny of Negevirus-like RNA dependent RNA polymerase (Pfam\n PF00978). Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only\nbootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Partiti_like__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+#    labs(caption = "Figure S6G. Maximum likelihood phylogeny of Partiti-like RNA dependent RNA polymerase (Pfam\n PF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Phasmaviridae__Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196 +
+#    labs(caption = "Figure S6H. Maximum likelihood phylogeny of Phasmaviridae RNA dependent RNA polymerase (Pfam\n PF04196). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\nbootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Picorna_like_Mayfield__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
+#    labs(caption = "Figure S6I. Maximum likelihood phylogeny of Picorna-like RNA dependent RNA polymerase (Pfam\n PF00680). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Sinaivirus__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
+#    labs(caption = "Figure S6J. Maximum likelihood phylogeny of Sinaivirus RNA dependent RNA polymerase (Pfam\nPF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Sinaivirus__Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998 +
+#    labs(caption = "Figure S6K. Maximum likelihood phylogeny of Sinaivirus RNA dependent RNA polymerase (Pfam\nPF00998). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#Virga_like__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
+#    labs(caption = "Figure S6L. Maximum likelihood phylogeny of Virga-like RNA dependent RNA polymerase (Pfam\nPF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
+#          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+#
+#dev.off()
 
-Dicistroviridae__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6B. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680)\nof Dicistroviridae. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications.\n Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+cowplot::plot_grid(
+Apis_rhabdovirus__Pfam__Mononegavirales_RNA_dependent_RNA_polymerase__PF00946,
+Dicistroviridae__Pfam__RNA_dependent_RNA_polymerase__PF00680,
+Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680,
+Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680,
+Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680,
+Negevirus_Negevirus_like__Pfam__RNA_dependent_RNA_polymerase__PF00978,
+labels=LETTERS[1-6],
+ncol = 2)
 
-Iflaviridae_Iflavirus_aladeformis__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6C. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680) related\n to Iflavirus aladeformis. Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap\n replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+ggsave(plot=last_plot(), paste0("Figure_S7", ".png"), dpi=300, width = 36, height = 48, units = "cm")
 
-Iflaviridae_Iflavirus_Bactrocera_tryoni_iflavirus_1__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6D. Maximum likelihood phylogeny of RNA dependent RNA polymerase related to Bactrocera tryoni iflaviruses\n(Pfam PF00680). Tree constructed using amino acid sequence in IQTREE\n with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
 
-Iflaviridae_Iflavirus_sacbroodi__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6E. Maximum likelihood phylogeny of RNA dependent RNA polymerase (Pfam PF00680) related to\n Iflavirus sacbroodi. Tree constructed using amino acid sequence in IQTREE\n with 1000 bootstrap replications. Only bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+cowplot::plot_grid(
+Partiti_like__Pfam__RNA_dependent_RNA_polymerase__PF00680,
+Phasmaviridae__Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196,
+Picorna_like_Mayfield__Pfam__RNA_dependent_RNA_polymerase__PF00680,
+Sinaivirus__Pfam__RNA_dependent_RNA_polymerase__PF00978,
+Sinaivirus__Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998,
+Virga_like__Pfam__RNA_dependent_RNA_polymerase__PF00978,
+labels=LETTERS[7-12],
+ncol = 2)
 
-Negevirus_Negevirus_like__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6F. Maximum likelihood phylogeny of Negevirus-like RNA dependent RNA polymerase (Pfam\n PF00978). Tree constructed using amino acid sequence in IQTREE\nwith 1000 bootstrap replications. Only\nbootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
+ggsave(plot=last_plot(), paste0("Figure_S8", ".png"), dpi=300, width = 36, height = 48, units = "cm")
 
-Partiti_like__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6G. Maximum likelihood phylogeny of Partiti-like RNA dependent RNA polymerase (Pfam\n PF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
-
-Phasmaviridae__Pfam__Bunyavirus_RNA_dependent_RNA_polymerase__PF04196 +
-    labs(caption = "Figure S6H. Maximum likelihood phylogeny of Phasmaviridae RNA dependent RNA polymerase (Pfam\n PF04196). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\nbootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
-
-Picorna_like_Mayfield__Pfam__RNA_dependent_RNA_polymerase__PF00680 +
-    labs(caption = "Figure S6I. Maximum likelihood phylogeny of Picorna-like RNA dependent RNA polymerase (Pfam\n PF00680). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
-
-Sinaivirus__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6J. Maximum likelihood phylogeny of Sinaivirus RNA dependent RNA polymerase (Pfam\nPF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
-
-Sinaivirus__Pfam__Viral_RNA_dependent_RNA_polymerase__PF00998 +
-    labs(caption = "Figure S6K. Maximum likelihood phylogeny of Sinaivirus RNA dependent RNA polymerase (Pfam\nPF00998). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
-
-Virga_like__Pfam__RNA_dependent_RNA_polymerase__PF00978 +
-    labs(caption = "Figure S6L. Maximum likelihood phylogeny of Virga-like RNA dependent RNA polymerase (Pfam\nPF00978). Tree constructed using amino acid sequence in IQTREE with 1000 bootstrap replications. Only\n bootstrap node values >70 are shown.") +
-          theme(plot.caption = element_text(hjust = 0.5, size = 14))
-
-dev.off()
 
 
 ggsave(plot=Iflaviridae_Iflavirus__Pfam__RNA_dependent_RNA_polymerase__PF00680, paste0("Iflaviridae_aa_tree", ".pdf"), dpi=300, width = 36, height = 24, units = "cm")
