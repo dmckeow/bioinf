@@ -544,6 +544,8 @@ phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -562,6 +564,8 @@ phytree <- drop.tip(phytree, to_drop)
 ref.sam.metadata <- TaxaNameCollapse2()
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -577,6 +581,8 @@ phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "circular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -591,6 +597,8 @@ phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -605,6 +613,8 @@ phytree <- drop.tip(phytree, to_drop)
 ###phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -619,6 +629,8 @@ phytree <- drop.tip(phytree, to_drop)
 
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -633,6 +645,8 @@ phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -647,6 +661,8 @@ phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -659,6 +675,8 @@ phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -671,6 +689,8 @@ phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -683,6 +703,8 @@ phytree <- drop.tip(phytree, to_drop)
 #phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -701,6 +723,8 @@ ref.sam.metadata <- ref.sam.metadata %>%
 
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -713,6 +737,8 @@ phytree <- drop.tip(phytree, to_drop)
 ##phytree <- drop.tip(phytree, non_representatives_vector)
 phytree <- phangorn::midpoint(phytree)
 p <- DrawTree(phytree, "rectangular", "branch.length")
+p <- p + guides(color = guide_legend(override.aes = list(size = 6))) +
+    theme(legend.text=element_text(size=14))
 output <- TreeHeatmap(p, c("RepresentativeName"), "prot", 0.1, 0.01)
 output$p <- output$p + scale_fill_brewer(palette = "Paired")
 assign(output_name, output$p)
@@ -781,6 +807,7 @@ labels=LETTERS[1-6],
 ncol = 2)
 
 ggsave(plot=last_plot(), paste0("Figure_S7", ".png"), dpi=300, width = 36, height = 48, units = "cm")
+ggsave(plot=last_plot(), paste0("Figure_S7", ".pdf"), dpi=300, width = 36, height = 48, units = "cm")
 
 
 cowplot::plot_grid(
@@ -794,6 +821,7 @@ labels=LETTERS[7-12],
 ncol = 2)
 
 ggsave(plot=last_plot(), paste0("Figure_S8", ".png"), dpi=300, width = 36, height = 48, units = "cm")
+ggsave(plot=last_plot(), paste0("Figure_S8", ".pdf"), dpi=300, width = 36, height = 48, units = "cm")
 
 
 
