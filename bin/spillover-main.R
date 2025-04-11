@@ -423,6 +423,55 @@ sampledata = dfmd %>% select(-real_analyses_name, -specific_read_source, -seqrun
 physeq = phyloseq(OTU, TAX, sampledata, remove_undetected = TRUE)
 physeq <- phyloseq_validate(physeq)
 
+############ Rarefaction curves
+library(data.table)
+library(vegan)
+
+physeq_pruned = prune_taxa(taxa_sums(physeq) > 1, physeq)
+
+otu.rare = otu_table(physeq_pruned)
+otu.rare = as.data.frame(t(otu.rare))
+sample_names = rownames(otu.rare)
+otu.rare = round(otu.rare)
+
+# we will use vegan rarecurve 
+
+otu.rarecurve = rarecurve(otu.rare, step = 1000, tidy = TRUE)
+
+rc_df <- otu.rarecurve |>
+  left_join(dfmd, by = join_by(Site == Sample_metadata_code))
+
+rc_df |>
+  ggplot(aes(Sample, Species, color = genus, group = Site)) +
+  geom_line(linewidth = 0.25) +
+  scale_x_log10() +
+  facet_grid(collection_year ~ genus)
+
+rc_df_flagged <- rc_df %>%
+  group_by(Site) %>%
+  arrange(Sample) %>%
+  mutate(
+    last_vals = zoo::rollapplyr(Species, width = 3, FUN = mean, fill = NA, partial = TRUE),
+    max_species = max(Species, na.rm = TRUE),
+    not_plateau = abs(max_species - last_vals) > 1,
+    alpha_val = if_else(not_plateau, 0.75, 1.0)
+  ) %>%
+  ungroup()
+
+
+rc_df_flagged |>
+  ggplot(aes(Sample, Species, color = genus, group = Site)) +
+  geom_line(aes(alpha = alpha_val), linewidth = 0.75) +
+  scale_x_log10() +
+  facet_grid(collection_year ~ genus) +
+  labs(x = "Number of reads (sample size)", y = "Number of virus species") +
+  guides(alpha = "none")
+
+ggsave(plot=last_plot(), paste0("sampling_curves", ".png"), dpi=300, width=16, height=24, units = "cm")
+
+# Lines are shaded based on whether species accumulation plateaus. A Site is considered to plateau if the average of the last three values is within 1 species of the maximum observed species richness. If this condition is not met, the line is shown with reduced opacity to indicate ongoing accumulation.
+
+############
 
 physeq@sam_data[["Overall_BBHB_ratio"]] <- as.character(physeq@sam_data[["Overall_BBHB_ratio"]])
 ### calc for PCoA
